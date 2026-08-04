@@ -1,4 +1,5 @@
 using DemoTradeLab.Infrastructure.Persistence;
+using DemoTradeLab.Infrastructure.Persistence.Seeding;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -13,7 +14,12 @@ public static class InfrastructureServiceCollectionExtensions
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
 
         services.AddDbContext<DemoTradeLabDbContext>(options =>
-            options.UseSqlite(connectionString));
+            options
+                .UseSqlite(connectionString)
+                .UseSeeding((context, _) =>
+                    DemoTradeLabDataSeeder.Seed(context))
+                .UseAsyncSeeding((context, _, cancellationToken) =>
+                    DemoTradeLabDataSeeder.SeedAsync(context, cancellationToken)));
 
         return services;
     }

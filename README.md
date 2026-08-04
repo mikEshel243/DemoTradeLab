@@ -19,8 +19,9 @@ The repository foundation is complete, and Milestone 1 trade-domain work is in p
 - EF Core 10 with SQLite persistence
 - Initial `Trades` database migration
 - Integration test covering migration, save, and reload
+- Eight fictional sample trades seeded into a new empty database
 
-Fictional seed data and trade CRUD remain within Milestone 1. Analytics, importing, the React frontend, and the reliability simulator are intentionally deferred to later milestones.
+Trade CRUD remains within Milestone 1. Analytics, importing, the React frontend, and the reliability simulator are intentionally deferred to later milestones.
 
 ## Prerequisites
 
@@ -53,6 +54,8 @@ dotnet ef database update `
 ```
 
 The default SQLite database is `demotrade-lab.db`. Database files are local development artifacts and are ignored by Git.
+
+Database update also seeds eight fictional sample trades when the `Trades` table is empty. Re-running the command does not duplicate them.
 
 Migrations are not applied automatically during API startup. This keeps schema changes explicit and prevents an application instance from unexpectedly changing a database.
 

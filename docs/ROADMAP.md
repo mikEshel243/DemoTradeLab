@@ -20,7 +20,7 @@ Status: In progress
 - [x] Unit tests for trade invariants
 - [x] EF Core with SQLite and migrations
 - [x] Integration test for migration and persistence mapping
-- [ ] Fictional seed data
+- [x] Fictional seed data
 - [ ] Trade CRUD endpoints
 - [ ] Integration tests for CRUD endpoints
 

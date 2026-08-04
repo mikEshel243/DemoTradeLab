@@ -71,3 +71,9 @@
 - **Status:** Accepted
 - **Decision:** Pin `SQLitePCLRaw.bundle_e_sqlite3` 2.1.12 alongside the EF Core SQLite provider.
 - **Reason:** EF Core 10.0.10 otherwise resolved bundle 2.1.11, whose native SQLite dependency has a high-severity advisory. Staying on patched 2.1.12 avoids an unnecessary major-version jump.
+
+## ADR-013: Seed sample data through migration-aware hooks
+
+- **Status:** Accepted
+- **Decision:** Use both `UseSeeding` and `UseAsyncSeeding` for the fictional initial dataset instead of model-managed `HasData` or ordinary API-startup code.
+- **Reason:** EF's seeding hooks run under the migration lock and support database-state checks. The synchronous hook supports current EF tooling, while the asynchronous hook supports application migration calls and cancellation. Keeping seeding attached to explicit migration execution avoids database writes during normal API startup.

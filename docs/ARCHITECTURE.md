@@ -74,6 +74,12 @@ DemoTradeLabDbContext -> EF Core SQLite provider -> local SQLite database
 
 Schema changes are represented by committed EF Core migrations. The API does not call `Database.Migrate()` during startup; developers apply migrations explicitly with the repository-local `dotnet-ef` tool.
 
+## Sample-data seeding
+
+EF Core's `UseSeeding` and `UseAsyncSeeding` hooks populate an empty `Trades` table when migrations are explicitly applied. Both paths use the normal `Trade.Create` domain factory, so sample data cannot bypass business validation. The seeder exits when any trade already exists, which makes repeated database-update commands idempotent for the initial dataset.
+
+The eight records are fixed, fictional examples marked with `TradeDataSource.Sample`. They intentionally produce five profitable trades, three losing trades, and a total realized profit/loss of `124 USD`, providing a known dataset for upcoming CRUD and analytics work.
+
 ## Deferred design
 
 Trade persistence, analytics, imports, frontend integration, and reliability-simulator internals will be designed in their own milestones. This avoids inventing abstractions before their requirements are exercised.
