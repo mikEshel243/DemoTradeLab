@@ -29,6 +29,9 @@
 ## Verification and documentation
 
 - Before finishing a change, run `dotnet format DemoTradeLab.sln`, `dotnet build DemoTradeLab.sln`, and `dotnet test DemoTradeLab.sln` as applicable.
+- Restore repository-local tools with `dotnet tool restore`.
+- Keep EF Core migrations in `DemoTradeLab.Infrastructure/Persistence/Migrations` and use `DemoTradeLab.Api` as the startup project.
+- Do not apply migrations automatically during normal API startup.
 - Run frontend lint and build only after the frontend exists.
 - Update README and relevant files under `docs/` whenever setup, behavior, architecture, decisions, or roadmap status changes.
 - Never commit local databases, uploaded reports, secrets, credentials, or personal financial data.

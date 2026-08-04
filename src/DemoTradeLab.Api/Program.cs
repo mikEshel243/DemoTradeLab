@@ -1,9 +1,16 @@
+using DemoTradeLab.Infrastructure;
+
 var builder = WebApplication.CreateBuilder(args);
+
+var connectionString = builder.Configuration.GetConnectionString("DemoTradeLab")
+    ?? throw new InvalidOperationException(
+        "Connection string 'DemoTradeLab' is not configured.");
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
 builder.Services.AddProblemDetails();
+builder.Services.AddInfrastructure(connectionString);
 
 var app = builder.Build();
 

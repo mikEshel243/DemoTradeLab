@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\DemoTradeLab.Api\DemoTradeLab.Api.csproj" />
+    <ProjectReference Include="..\..\src\DemoTradeLab.Infrastructure\DemoTradeLab.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

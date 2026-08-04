@@ -36,33 +36,33 @@ public sealed class Trade
         ImportedAtUtc = importedAtUtc;
     }
 
-    public Guid Id { get; }
+    public Guid Id { get; private set; }
 
-    public string Instrument { get; }
+    public string Instrument { get; private set; }
 
-    public TradeDirection Direction { get; }
+    public TradeDirection Direction { get; private set; }
 
-    public DateTimeOffset OpenedAtUtc { get; }
+    public DateTimeOffset OpenedAtUtc { get; private set; }
 
-    public DateTimeOffset ClosedAtUtc { get; }
+    public DateTimeOffset ClosedAtUtc { get; private set; }
 
-    public decimal OpeningPrice { get; }
+    public decimal OpeningPrice { get; private set; }
 
-    public decimal ClosingPrice { get; }
+    public decimal ClosingPrice { get; private set; }
 
-    public decimal Quantity { get; }
+    public decimal Quantity { get; private set; }
 
-    public decimal RealizedProfitLoss { get; }
+    public decimal RealizedProfitLoss { get; private set; }
 
-    public string Currency { get; }
+    public string Currency { get; private set; }
 
-    public decimal? Fees { get; }
+    public decimal? Fees { get; private set; }
 
-    public decimal? FinancingCosts { get; }
+    public decimal? FinancingCosts { get; private set; }
 
-    public TradeDataSource Source { get; }
+    public TradeDataSource Source { get; private set; }
 
-    public DateTimeOffset? ImportedAtUtc { get; }
+    public DateTimeOffset? ImportedAtUtc { get; private set; }
 
     public static TradeCreationResult Create(TradeDraft draft)
     {

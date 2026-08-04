@@ -47,3 +47,27 @@
 - **Status:** Accepted
 - **Decision:** Require zero-offset `DateTimeOffset` values for opening, closing, and import timestamps.
 - **Reason:** `DateTimeOffset` represents an unambiguous instant, and enforcing UTC gives storage and comparison consistency. User-local time conversion belongs at the presentation boundary.
+
+## ADR-009: Keep EF Core mapping in Infrastructure
+
+- **Status:** Accepted
+- **Decision:** Configure `Trade` through `IEntityTypeConfiguration<Trade>` in Infrastructure instead of placing EF Core attributes on the domain entity.
+- **Reason:** Core remains independent of persistence technology, while the explicit mapping keeps database column requirements visible and testable.
+
+## ADR-010: Use explicit migrations and a local EF tool
+
+- **Status:** Accepted
+- **Decision:** Commit EF Core migrations, pin `dotnet-ef` in the repository tool manifest, and require an explicit database-update command.
+- **Reason:** Reproducible tooling avoids machine-specific versions. Explicit migration execution makes schema changes deliberate and is safer than changing the database automatically whenever the API starts.
+
+## ADR-011: Preserve decimal values with the SQLite provider
+
+- **Status:** Accepted
+- **Decision:** Keep financial properties as `decimal` even though SQLite stores them using its text representation.
+- **Reason:** Converting financial values to `double` would introduce binary floating-point error. SQLite's limitations for server-side decimal ordering and aggregation will be considered explicitly during the analytics milestone.
+
+## ADR-012: Pin a patched native SQLite bundle
+
+- **Status:** Accepted
+- **Decision:** Pin `SQLitePCLRaw.bundle_e_sqlite3` 2.1.12 alongside the EF Core SQLite provider.
+- **Reason:** EF Core 10.0.10 otherwise resolved bundle 2.1.11, whose native SQLite dependency has a high-severity advisory. Staying on patched 2.1.12 avoids an unnecessary major-version jump.

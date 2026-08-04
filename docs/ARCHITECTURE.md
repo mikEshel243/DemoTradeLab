@@ -35,9 +35,9 @@ The `Trade` entity uses a private constructor and a public `Create` factory. Cal
 
 ### DemoTradeLab.Infrastructure
 
-- Will contain EF Core, SQLite configuration, repositories, and concrete external implementations.
-- Implements interfaces defined by Core.
-- Is wired into the application by Api through dependency injection.
+- Contains the EF Core `DemoTradeLabDbContext`, SQLite entity configuration, and migrations.
+- Will implement persistence interfaces defined by Core when application use cases require them.
+- Is wired into the application by Api through the `AddInfrastructure` dependency-injection extension.
 
 ### Tests
 
@@ -57,6 +57,22 @@ TradeDraft -> Trade.Create -> TradeCreationResult
 ```
 
 The domain layer normalizes instrument and currency text, validates completed-trade invariants, and generates the internal `Guid` identity only after validation succeeds.
+
+## Persistence flow
+
+```text
+Api configuration
+    |
+    v
+AddInfrastructure(connection string)
+    |
+    v
+DemoTradeLabDbContext -> EF Core SQLite provider -> local SQLite database
+```
+
+`TradeConfiguration` maps the domain entity without adding EF Core attributes to Core. Enums are stored as readable strings. Financial values remain `decimal`; the SQLite provider stores them as text so their decimal representation survives a round trip without conversion to binary floating point.
+
+Schema changes are represented by committed EF Core migrations. The API does not call `Database.Migrate()` during startup; developers apply migrations explicitly with the repository-local `dotnet-ef` tool.
 
 ## Deferred design
 

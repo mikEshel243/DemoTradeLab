@@ -18,10 +18,11 @@ Status: In progress
 
 - [x] Trade domain model and validation
 - [x] Unit tests for trade invariants
-- [ ] EF Core with SQLite and migrations
+- [x] EF Core with SQLite and migrations
+- [x] Integration test for migration and persistence mapping
 - [ ] Fictional seed data
 - [ ] Trade CRUD endpoints
-- [ ] Integration tests for persistence and CRUD
+- [ ] Integration tests for CRUD endpoints
 
 ## Milestone 2 - Analytics API
 

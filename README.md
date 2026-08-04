@@ -16,8 +16,11 @@ The repository foundation is complete, and Milestone 1 trade-domain work is in p
 - `GET /api/health` health endpoint
 - Completed-trade domain model with explicit validation results
 - Unit tests for trade invariants and normalization
+- EF Core 10 with SQLite persistence
+- Initial `Trades` database migration
+- Integration test covering migration, save, and reload
 
-Trade persistence and CRUD remain within Milestone 1. Analytics, importing, the React frontend, and the reliability simulator are intentionally deferred to later milestones.
+Fictional seed data and trade CRUD remain within Milestone 1. Analytics, importing, the React frontend, and the reliability simulator are intentionally deferred to later milestones.
 
 ## Prerequisites
 
@@ -31,10 +34,27 @@ The foundation was created and verified with .NET SDK 10.0.302.
 From the repository root:
 
 ```powershell
+dotnet tool restore
 dotnet restore DemoTradeLab.sln
 dotnet build DemoTradeLab.sln
 dotnet test DemoTradeLab.sln
 ```
+
+`dotnet tool restore` installs the repository-pinned `dotnet-ef` command. It does not install a machine-global tool.
+
+## Create or update the local database
+
+Apply all committed EF Core migrations:
+
+```powershell
+dotnet ef database update `
+  --project src/DemoTradeLab.Infrastructure `
+  --startup-project src/DemoTradeLab.Api
+```
+
+The default SQLite database is `demotrade-lab.db`. Database files are local development artifacts and are ignored by Git.
+
+Migrations are not applied automatically during API startup. This keeps schema changes explicit and prevents an application instance from unexpectedly changing a database.
 
 ## Run the API
 
