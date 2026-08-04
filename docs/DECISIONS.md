@@ -35,3 +35,15 @@
 - **Status:** Accepted
 - **Decision:** Pin `Microsoft.OpenApi` to the latest compatible 2.x release in addition to the ASP.NET Core OpenAPI package.
 - **Reason:** The ASP.NET Core package's minimum transitive dependency resolved to a version with a high-severity denial-of-service advisory. An explicit 2.x pin keeps the dependency on the patched major line without introducing a major-version compatibility change.
+
+## ADR-007: Create trades through an explicit validation result
+
+- **Status:** Accepted
+- **Decision:** Keep the `Trade` constructor private and create trades from a `TradeDraft` through `Trade.Create`, returning `TradeCreationResult`.
+- **Reason:** A successful entity always satisfies its domain invariants, while ordinary invalid input is reported as structured data instead of exceptions. The approach is intentionally specific to trade creation rather than introducing a generic result framework prematurely.
+
+## ADR-008: Represent instants with UTC `DateTimeOffset`
+
+- **Status:** Accepted
+- **Decision:** Require zero-offset `DateTimeOffset` values for opening, closing, and import timestamps.
+- **Reason:** `DateTimeOffset` represents an unambiguous instant, and enforcing UTC gives storage and comparison consistency. User-local time conversion belongs at the presentation boundary.

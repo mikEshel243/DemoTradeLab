@@ -29,7 +29,9 @@ DemoTradeLab.Core <- DemoTradeLab.Infrastructure
 
 - Contains domain models, business rules, interfaces, and use cases.
 - Uses no EF Core or ASP.NET Core types.
-- Will hold precision-sensitive financial values as `decimal` and timestamps as UTC values.
+- Holds precision-sensitive financial values as `decimal` and timestamps as UTC `DateTimeOffset` values.
+
+The `Trade` entity uses a private constructor and a public `Create` factory. Callers provide a `TradeDraft`, and creation returns either a valid `Trade` or a collection of structured validation errors. This prevents partially valid entities from entering later application and persistence flows.
 
 ### DemoTradeLab.Infrastructure
 
@@ -45,6 +47,16 @@ DemoTradeLab.Core <- DemoTradeLab.Infrastructure
 ## Current request flow
 
 `GET /api/health` reaches `HealthController`. The controller asks ASP.NET Core's `HealthCheckService` for the aggregate application status and returns an explicit JSON response containing the status and UTC check time.
+
+## Current domain flow
+
+```text
+TradeDraft -> Trade.Create -> TradeCreationResult
+                                |-- valid Trade
+                                `-- validation errors
+```
+
+The domain layer normalizes instrument and currency text, validates completed-trade invariants, and generates the internal `Guid` identity only after validation succeeds.
 
 ## Deferred design
 

@@ -6,7 +6,7 @@ This is an unofficial educational project. It is not affiliated with, endorsed b
 
 ## Current scope
 
-Milestone 0 provides the backend repository foundation:
+The repository foundation is complete, and Milestone 1 trade-domain work is in progress:
 
 - .NET 10 modular-monolith solution
 - Controller-based ASP.NET Core Web API
@@ -14,8 +14,10 @@ Milestone 0 provides the backend repository foundation:
 - xUnit unit and integration test projects
 - OpenAPI document generation in Development
 - `GET /api/health` health endpoint
+- Completed-trade domain model with explicit validation results
+- Unit tests for trade invariants and normalization
 
-Trade storage, analytics, importing, the React frontend, and the reliability simulator are intentionally deferred to later milestones.
+Trade persistence and CRUD remain within Milestone 1. Analytics, importing, the React frontend, and the reliability simulator are intentionally deferred to later milestones.
 
 ## Prerequisites
 
