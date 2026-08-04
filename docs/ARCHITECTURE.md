@@ -36,13 +36,13 @@ The `Trade` entity uses a private constructor and a public `Create` factory. Cal
 ### DemoTradeLab.Infrastructure
 
 - Contains the EF Core `DemoTradeLabDbContext`, SQLite entity configuration, and migrations.
-- Will implement persistence interfaces defined by Core when application use cases require them.
+- Implements the focused Core `ITradeRepository` through `EfTradeRepository`.
 - Is wired into the application by Api through the `AddInfrastructure` dependency-injection extension.
 
 ### Tests
 
 - Unit tests exercise isolated Core business rules.
-- Integration tests exercise the ASP.NET Core application through an in-memory test host and, in later milestones, a controlled test database.
+- Integration tests exercise the ASP.NET Core application through a test host and an isolated temporary SQLite database.
 
 ## Current request flow
 
@@ -80,6 +80,29 @@ EF Core's `UseSeeding` and `UseAsyncSeeding` hooks populate an empty `Trades` ta
 
 The eight records are fixed, fictional examples marked with `TradeDataSource.Sample`. They intentionally produce five profitable trades, three losing trades, and a total realized profit/loss of `124 USD`, providing a known dataset for upcoming CRUD and analytics work.
 
+## Trade CRUD flow
+
+```text
+HTTP request
+    |
+    v
+SaveTradeRequest and automatic API validation
+    |
+    v
+TradesController
+    |
+    v
+TradeService -> Trade domain validation
+    |
+    v
+ITradeRepository
+    |
+    v
+EfTradeRepository -> DemoTradeLabDbContext -> SQLite
+```
+
+Api DTOs are mapped explicitly instead of returning EF/domain entities. `TradeService` coordinates the use case without referencing ASP.NET Core or EF Core, while the focused repository hides query tracking and persistence mechanics. Updates preserve the entity ID, data source, and import timestamp. Domain validation errors become HTTP 400 Validation Problem Details; missing resources become HTTP 404 Problem Details.
+
 ## Deferred design
 
-Trade persistence, analytics, imports, frontend integration, and reliability-simulator internals will be designed in their own milestones. This avoids inventing abstractions before their requirements are exercised.
+Analytics, imports, frontend integration, and reliability-simulator internals will be designed in their own milestones. This avoids inventing abstractions before their requirements are exercised.

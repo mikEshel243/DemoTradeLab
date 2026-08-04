@@ -4,3 +4,27 @@ GET {{DemoTradeLab.Api_HostAddress}}/api/health
 Accept: application/json
 
 ###
+
+GET {{DemoTradeLab.Api_HostAddress}}/api/trades
+Accept: application/json
+
+###
+
+POST {{DemoTradeLab.Api_HostAddress}}/api/trades
+Content-Type: application/json
+
+{
+  "instrument": "EUR/USD",
+  "direction": "buy",
+  "openedAtUtc": "2026-08-04T10:00:00Z",
+  "closedAtUtc": "2026-08-04T10:20:00Z",
+  "openingPrice": 1.15,
+  "closingPrice": 1.152,
+  "quantity": 1000,
+  "realizedProfitLoss": 2,
+  "currency": "USD",
+  "fees": null,
+  "financingCosts": null
+}
+
+###

@@ -14,15 +14,15 @@ Status: Complete
 
 ## Milestone 1 - Trade domain
 
-Status: In progress
+Status: Complete
 
 - [x] Trade domain model and validation
 - [x] Unit tests for trade invariants
 - [x] EF Core with SQLite and migrations
 - [x] Integration test for migration and persistence mapping
 - [x] Fictional seed data
-- [ ] Trade CRUD endpoints
-- [ ] Integration tests for CRUD endpoints
+- [x] Trade CRUD endpoints
+- [x] Integration tests for CRUD endpoints
 
 ## Milestone 2 - Analytics API
 

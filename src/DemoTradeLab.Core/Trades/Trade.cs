@@ -68,16 +68,7 @@ public sealed class Trade
     {
         ArgumentNullException.ThrowIfNull(draft);
 
-        var errors = new List<TradeValidationError>();
-        var instrument = draft.Instrument?.Trim() ?? string.Empty;
-        var currency = draft.Currency?.Trim().ToUpperInvariant() ?? string.Empty;
-
-        ValidateInstrument(instrument, errors);
-        ValidateDirection(draft.Direction, errors);
-        ValidateTimestamps(draft, errors);
-        ValidateFinancialValues(draft, errors);
-        ValidateCurrency(currency, errors);
-        ValidateSource(draft, errors);
+        var errors = ValidateDraft(draft, out var instrument, out var currency);
 
         if (errors.Count > 0)
         {
@@ -101,6 +92,53 @@ public sealed class Trade
             draft.ImportedAtUtc);
 
         return TradeCreationResult.Success(trade);
+    }
+
+    public TradeUpdateResult Update(TradeDraft draft)
+    {
+        ArgumentNullException.ThrowIfNull(draft);
+
+        var errors = ValidateDraft(draft, out var instrument, out var currency);
+
+        if (errors.Count > 0)
+        {
+            return TradeUpdateResult.Failure(errors);
+        }
+
+        Instrument = instrument;
+        Direction = draft.Direction;
+        OpenedAtUtc = draft.OpenedAtUtc;
+        ClosedAtUtc = draft.ClosedAtUtc;
+        OpeningPrice = draft.OpeningPrice;
+        ClosingPrice = draft.ClosingPrice;
+        Quantity = draft.Quantity;
+        RealizedProfitLoss = draft.RealizedProfitLoss;
+        Currency = currency;
+        Fees = draft.Fees;
+        FinancingCosts = draft.FinancingCosts;
+        Source = draft.Source;
+        ImportedAtUtc = draft.ImportedAtUtc;
+
+        return TradeUpdateResult.Success(this);
+    }
+
+    private static List<TradeValidationError> ValidateDraft(
+        TradeDraft draft,
+        out string instrument,
+        out string currency)
+    {
+        var errors = new List<TradeValidationError>();
+        instrument = draft.Instrument?.Trim() ?? string.Empty;
+        currency = draft.Currency?.Trim().ToUpperInvariant() ?? string.Empty;
+
+        ValidateInstrument(instrument, errors);
+        ValidateDirection(draft.Direction, errors);
+        ValidateTimestamps(draft, errors);
+        ValidateFinancialValues(draft, errors);
+        ValidateCurrency(currency, errors);
+        ValidateSource(draft, errors);
+
+        return errors;
     }
 
     private static void ValidateInstrument(

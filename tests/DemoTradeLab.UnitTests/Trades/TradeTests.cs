@@ -131,6 +131,55 @@ public sealed class TradeTests
         Assert.Equal(draft.ImportedAtUtc, trade.ImportedAtUtc);
     }
 
+    [Fact]
+    public void Update_WithValidDraft_ChangesValuesAndPreservesIdentity()
+    {
+        var trade = Assert.IsType<Trade>(Trade.Create(CreateValidDraft()).Trade);
+        var originalId = trade.Id;
+        var updatedDraft = CreateValidDraft() with
+        {
+            Instrument = "  AAPL  ",
+            Direction = TradeDirection.Sell,
+            Currency = " usd ",
+            OpeningPrice = 225m,
+            ClosingPrice = 215m,
+            Quantity = 4m,
+            RealizedProfitLoss = 40m
+        };
+
+        var result = trade.Update(updatedDraft);
+
+        Assert.True(result.IsSuccess);
+        Assert.Same(trade, result.Trade);
+        Assert.Equal(originalId, trade.Id);
+        Assert.Equal("AAPL", trade.Instrument);
+        Assert.Equal(TradeDirection.Sell, trade.Direction);
+        Assert.Equal("USD", trade.Currency);
+        Assert.Equal(40m, trade.RealizedProfitLoss);
+    }
+
+    [Fact]
+    public void Update_WithInvalidDraft_ReturnsErrorsWithoutChangingTrade()
+    {
+        var trade = Assert.IsType<Trade>(Trade.Create(CreateValidDraft()).Trade);
+        var originalInstrument = trade.Instrument;
+        var originalOpeningPrice = trade.OpeningPrice;
+        var invalidDraft = CreateValidDraft() with
+        {
+            Instrument = " ",
+            OpeningPrice = 0m
+        };
+
+        var result = trade.Update(invalidDraft);
+
+        Assert.False(result.IsSuccess);
+        Assert.Null(result.Trade);
+        AssertHasError(result, nameof(TradeDraft.Instrument), TradeValidationCode.Required);
+        AssertHasError(result, nameof(TradeDraft.OpeningPrice), TradeValidationCode.InvalidValue);
+        Assert.Equal(originalInstrument, trade.Instrument);
+        Assert.Equal(originalOpeningPrice, trade.OpeningPrice);
+    }
+
     private static TradeDraft CreateValidDraft() => new(
         Instrument: "EUR/USD",
         Direction: TradeDirection.Buy,
@@ -148,6 +197,16 @@ public sealed class TradeTests
 
     private static void AssertHasError(
         TradeCreationResult result,
+        string propertyName,
+        TradeValidationCode code)
+    {
+        Assert.Contains(
+            result.Errors,
+            error => error.PropertyName == propertyName && error.Code == code);
+    }
+
+    private static void AssertHasError(
+        TradeUpdateResult result,
         string propertyName,
         TradeValidationCode code)
     {

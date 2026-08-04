@@ -6,7 +6,7 @@ This is an unofficial educational project. It is not affiliated with, endorsed b
 
 ## Current scope
 
-The repository foundation is complete, and Milestone 1 trade-domain work is in progress:
+The repository foundation and Milestone 1 trade CRUD backend are complete:
 
 - .NET 10 modular-monolith solution
 - Controller-based ASP.NET Core Web API
@@ -20,8 +20,10 @@ The repository foundation is complete, and Milestone 1 trade-domain work is in p
 - Initial `Trades` database migration
 - Integration test covering migration, save, and reload
 - Eight fictional sample trades seeded into a new empty database
+- Trade create, read, update, and delete endpoints
+- Structured validation and not-found Problem Details
 
-Trade CRUD remains within Milestone 1. Analytics, importing, the React frontend, and the reliability simulator are intentionally deferred to later milestones.
+Analytics, importing, the React frontend, and the reliability simulator are intentionally deferred to later milestones.
 
 ## Prerequisites
 
@@ -81,6 +83,20 @@ Example response:
 ```
 
 In Development, the OpenAPI document is available at `/openapi/v1.json`.
+
+## Trade API
+
+| Method | Route | Result |
+| --- | --- | --- |
+| `GET` | `/api/trades` | Lists trades |
+| `GET` | `/api/trades/{id}` | Returns one trade or 404 Problem Details |
+| `POST` | `/api/trades` | Creates a manual trade and returns 201 |
+| `PUT` | `/api/trades/{id}` | Replaces editable trade fields |
+| `DELETE` | `/api/trades/{id}` | Deletes a trade and returns 204 |
+
+Create and update requests accept string enum values such as `"buy"` and `"sell"`. New API-created trades always receive the `manual` source; clients cannot claim that a record came from sample or imported data.
+
+See `src/DemoTradeLab.Api/DemoTradeLab.Api.http` for an executable request example.
 
 ## Repository structure
 

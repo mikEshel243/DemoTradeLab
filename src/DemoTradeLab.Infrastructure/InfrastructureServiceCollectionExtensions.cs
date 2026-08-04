@@ -1,4 +1,6 @@
+using DemoTradeLab.Core.Trades;
 using DemoTradeLab.Infrastructure.Persistence;
+using DemoTradeLab.Infrastructure.Persistence.Repositories;
 using DemoTradeLab.Infrastructure.Persistence.Seeding;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,6 +22,8 @@ public static class InfrastructureServiceCollectionExtensions
                     DemoTradeLabDataSeeder.Seed(context))
                 .UseAsyncSeeding((context, _, cancellationToken) =>
                     DemoTradeLabDataSeeder.SeedAsync(context, cancellationToken)));
+
+        services.AddScoped<ITradeRepository, EfTradeRepository>();
 
         return services;
     }

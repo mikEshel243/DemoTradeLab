@@ -77,3 +77,15 @@
 - **Status:** Accepted
 - **Decision:** Use both `UseSeeding` and `UseAsyncSeeding` for the fictional initial dataset instead of model-managed `HasData` or ordinary API-startup code.
 - **Reason:** EF's seeding hooks run under the migration lock and support database-state checks. The synchronous hook supports current EF tooling, while the asynchronous hook supports application migration calls and cancellation. Keeping seeding attached to explicit migration execution avoids database writes during normal API startup.
+
+## ADR-014: Use a focused repository and application service
+
+- **Status:** Accepted
+- **Decision:** Define `ITradeRepository` and `TradeService` in Core, with one EF-specific repository implementation in Infrastructure.
+- **Reason:** The controller remains limited to HTTP concerns, Core owns use-case orchestration, and EF tracking details stay in Infrastructure. A generic repository framework was intentionally avoided because it would mostly duplicate `DbSet` without expressing trade-specific needs.
+
+## ADR-015: Keep HTTP contracts separate from domain entities
+
+- **Status:** Accepted
+- **Decision:** Accept `SaveTradeRequest` and return `TradeResponse`, using explicit mapping at the API boundary. Serialize trade enums as lowercase strings.
+- **Reason:** API contracts can evolve independently from persistence and domain implementation. Readable enum strings improve the HTTP contract, while clients are prevented from setting protected provenance fields such as source and import timestamp.

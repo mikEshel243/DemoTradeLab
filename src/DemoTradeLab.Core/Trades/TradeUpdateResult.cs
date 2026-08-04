@@ -2,9 +2,9 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace DemoTradeLab.Core.Trades;
 
-public sealed class TradeCreationResult
+public sealed class TradeUpdateResult
 {
-    private TradeCreationResult(Trade? trade, IReadOnlyList<TradeValidationError> errors)
+    private TradeUpdateResult(Trade? trade, IReadOnlyList<TradeValidationError> errors)
     {
         Trade = trade;
         Errors = errors;
@@ -17,9 +17,9 @@ public sealed class TradeCreationResult
 
     public IReadOnlyList<TradeValidationError> Errors { get; }
 
-    internal static TradeCreationResult Success(Trade trade) =>
+    internal static TradeUpdateResult Success(Trade trade) =>
         new(trade, Array.Empty<TradeValidationError>());
 
-    internal static TradeCreationResult Failure(IEnumerable<TradeValidationError> errors) =>
+    internal static TradeUpdateResult Failure(IEnumerable<TradeValidationError> errors) =>
         new(null, errors.ToArray());
 }
