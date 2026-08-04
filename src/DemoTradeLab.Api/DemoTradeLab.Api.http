@@ -1,6 +1,6 @@
 @DemoTradeLab.Api_HostAddress = http://localhost:5122
 
-GET {{DemoTradeLab.Api_HostAddress}}/weatherforecast/
+GET {{DemoTradeLab.Api_HostAddress}}/api/health
 Accept: application/json
 
 ###

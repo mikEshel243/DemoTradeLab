@@ -400,6 +400,19 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 
+# DemoTradeLab local and sensitive data
+.env
+.env.*
+!.env.example
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+uploads/
+imports/
+local-data/
+
 ##
 ## Visual studio for Mac
 ##
