@@ -89,3 +89,21 @@
 - **Status:** Accepted
 - **Decision:** Accept `SaveTradeRequest` and return `TradeResponse`, using explicit mapping at the API boundary. Serialize trade enums as lowercase strings.
 - **Reason:** API contracts can evolve independently from persistence and domain implementation. Readable enum strings improve the HTTP contract, while clients are prevented from setting protected provenance fields such as source and import timestamp.
+
+## ADR-016: Calculate bounded MVP analytics in Core
+
+- **Status:** Accepted
+- **Decision:** Load the current read-only trade set and perform filtering, sorting, decimal aggregation, and timeline calculations in Core for Milestone 2.
+- **Reason:** SQLite does not support every required server-side operation over .NET `decimal` values. In-memory calculation preserves financial precision and keeps the rules independently unit-testable for the intentionally small local dataset. This decision must be revisited with pagination and a database-appropriate query strategy before supporting unbounded data.
+
+## ADR-017: Keep monetary analytics separated by currency
+
+- **Status:** Accepted
+- **Decision:** Return total profit/loss, best and worst trades, instrument totals, and cumulative timelines per currency rather than adding different currencies together.
+- **Reason:** Adding values such as USD and EUR without an explicit exchange-rate source produces a financially meaningless result. DemoTradeLab has no market-data or currency-conversion dependency, so currency separation is the honest contract.
+
+## ADR-018: Define deterministic analytics rules
+
+- **Status:** Accepted
+- **Decision:** Calculate win rate as profitable trades divided by all completed trades, classify exactly zero profit/loss as break-even, round percentage results to two decimal places, and use explicit alphabetical/time/ID tie-breakers.
+- **Reason:** Analytics are easier to trust, test, and explain when edge-case behavior does not depend on database row order or unstated conventions.

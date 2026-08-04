@@ -15,9 +15,10 @@ public sealed class TradesController(
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<TradeResponse>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<TradeResponse>>> ListAsync(
+        [FromQuery] ListTradesQueryRequest query,
         CancellationToken cancellationToken)
     {
-        var trades = await tradeService.ListAsync(cancellationToken);
+        var trades = await tradeService.ListAsync(query.ToQuery(), cancellationToken);
         var response = trades.Select(trade => trade.ToResponse()).ToArray();
 
         return Ok(response);

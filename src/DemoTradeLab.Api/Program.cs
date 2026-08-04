@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using DemoTradeLab.Core.Analytics;
 using DemoTradeLab.Core.Trades;
 using DemoTradeLab.Infrastructure;
 
@@ -27,6 +28,7 @@ builder.Services.AddHealthChecks();
 builder.Services.AddProblemDetails();
 builder.Services.AddInfrastructure(connectionString);
 builder.Services.AddScoped<TradeService>();
+builder.Services.AddScoped<TradeAnalyticsService>();
 
 var app = builder.Build();
 

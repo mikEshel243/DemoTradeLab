@@ -103,6 +103,30 @@ EfTradeRepository -> DemoTradeLabDbContext -> SQLite
 
 Api DTOs are mapped explicitly instead of returning EF/domain entities. `TradeService` coordinates the use case without referencing ASP.NET Core or EF Core, while the focused repository hides query tracking and persistence mechanics. Updates preserve the entity ID, data source, and import timestamp. Domain validation errors become HTTP 400 Validation Problem Details; missing resources become HTTP 404 Problem Details.
 
+## Analytics and trade-query flow
+
+```text
+HTTP query or analytics request
+    |
+    v
+API request/response DTOs and controller
+    |
+    v
+TradeService or TradeAnalyticsService
+    |
+    v
+ITradeRepository -> read-only trade snapshot
+    |
+    v
+Core filtering/sorting or TradeAnalyticsCalculator
+```
+
+`TradeService` applies validated filters and deterministic ordering for the trade table. `TradeAnalyticsCalculator` is a pure Core component: it has no database, HTTP, clock, or logging dependency, so calculation edge cases are covered with fast unit tests.
+
+For the bounded local MVP, the repository loads a read-only trade snapshot and Core performs filtering, decimal aggregation, and timeline construction in memory. This preserves exact `decimal` behavior despite SQLite's server-side decimal query limitations. It is not the intended design for an unbounded production dataset; pagination and database-specific aggregation would be introduced before scaling the data volume.
+
+Counts and durations can span all trades, but money cannot be meaningfully added across currencies. Dashboard performance, best/worst trades, instrument totals, and profit/loss timelines are therefore partitioned by currency. Instrument names are grouped case-insensitively, and deterministic tie-breakers keep responses stable.
+
 ## Deferred design
 
-Analytics, imports, frontend integration, and reliability-simulator internals will be designed in their own milestones. This avoids inventing abstractions before their requirements are exercised.
+Imports, frontend integration, and reliability-simulator internals will be designed in their own milestones. This avoids inventing abstractions before their requirements are exercised.

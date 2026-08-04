@@ -1,3 +1,4 @@
+using DemoTradeLab.Core.Analytics;
 using DemoTradeLab.Core.Trades;
 using DemoTradeLab.Infrastructure;
 using DemoTradeLab.Infrastructure.Persistence;
@@ -37,6 +38,19 @@ public sealed class SampleDataSeedingTests
             Assert.Equal(5, trades.Count(trade => trade.RealizedProfitLoss > 0m));
             Assert.Equal(3, trades.Count(trade => trade.RealizedProfitLoss < 0m));
             Assert.Equal(124m, trades.Sum(trade => trade.RealizedProfitLoss));
+
+            var dashboard = TradeAnalyticsCalculator.CalculateDashboard(trades);
+            var usdPerformance = Assert.Single(dashboard.CurrencyPerformance);
+
+            Assert.Equal(8, dashboard.TotalTrades);
+            Assert.Equal(5, dashboard.ProfitableTrades);
+            Assert.Equal(3, dashboard.LosingTrades);
+            Assert.Equal(0, dashboard.BreakEvenTrades);
+            Assert.Equal(62.5m, dashboard.WinRatePercentage);
+            Assert.Equal("EUR/USD", dashboard.MostActiveInstrument);
+            Assert.Equal(18d, dashboard.AverageTradeDuration?.TotalMinutes);
+            Assert.Equal("USD", usdPerformance.Currency);
+            Assert.Equal(124m, usdPerformance.TotalRealizedProfitLoss);
         }
         finally
         {

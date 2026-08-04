@@ -6,7 +6,7 @@ This is an unofficial educational project. It is not affiliated with, endorsed b
 
 ## Current scope
 
-The repository foundation and Milestone 1 trade CRUD backend are complete:
+The repository foundation, trade CRUD backend, and Milestone 2 analytics API are complete:
 
 - .NET 10 modular-monolith solution
 - Controller-based ASP.NET Core Web API
@@ -22,8 +22,11 @@ The repository foundation and Milestone 1 trade CRUD backend are complete:
 - Eight fictional sample trades seeded into a new empty database
 - Trade create, read, update, and delete endpoints
 - Structured validation and not-found Problem Details
+- Filterable and sortable trade listing
+- Dashboard statistics, instrument summaries, and profit/loss timeline endpoints
+- Currency-separated monetary analytics
 
-Analytics, importing, the React frontend, and the reliability simulator are intentionally deferred to later milestones.
+Importing, the React frontend, and the reliability simulator are intentionally deferred to later milestones.
 
 ## Prerequisites
 
@@ -97,6 +100,38 @@ In Development, the OpenAPI document is available at `/openapi/v1.json`.
 Create and update requests accept string enum values such as `"buy"` and `"sell"`. New API-created trades always receive the `manual` source; clients cannot claim that a record came from sample or imported data.
 
 See `src/DemoTradeLab.Api/DemoTradeLab.Api.http` for an executable request example.
+
+`GET /api/trades` accepts these optional query parameters:
+
+| Parameter | Values or meaning |
+| --- | --- |
+| `instrument` | Exact instrument match, case-insensitive |
+| `currency` | Three-letter currency code, case-insensitive |
+| `direction` | `buy` or `sell` |
+| `source` | `manual`, `sample`, or `imported` |
+| `outcome` | `profitable`, `losing`, or `breakEven` |
+| `closedFromUtc` | Inclusive UTC closing-time lower bound |
+| `closedToUtc` | Inclusive UTC closing-time upper bound |
+| `sortBy` | `closedAtUtc`, `openedAtUtc`, `instrument`, `realizedProfitLoss`, or `duration` |
+| `sortDirection` | `ascending` or `descending` |
+
+The default order is newest closing time first. Example:
+
+```http
+GET /api/trades?instrument=EUR%2FUSD&outcome=profitable&sortBy=realizedProfitLoss&sortDirection=descending
+```
+
+## Analytics API
+
+| Method | Route | Result |
+| --- | --- | --- |
+| `GET` | `/api/analytics/dashboard` | Counts, win rate, most active instrument, average duration, and currency performance |
+| `GET` | `/api/analytics/instruments` | Statistics grouped by instrument and currency |
+| `GET` | `/api/analytics/profit-loss-timeline` | Chronological and cumulative realized profit/loss points per currency |
+
+Win rate is profitable trades divided by all completed trades, including break-even trades in the denominator. Monetary values are never summed across different currencies. Best trade, worst trade, total realized profit/loss, and timeline totals are therefore separated by currency.
+
+Analytics currently use `RealizedProfitLoss` as stored. Optional fees and financing costs are exposed separately on a trade and are not subtracted a second time.
 
 ## Repository structure
 

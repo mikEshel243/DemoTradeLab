@@ -26,13 +26,13 @@ Status: Complete
 
 ## Milestone 2 - Analytics API
 
-Status: Planned
+Status: Complete
 
-- Dashboard statistics
-- Filtering and sorting
-- Instrument summaries
-- Profit/loss timeline
-- Calculation edge-case tests
+- [x] Dashboard statistics
+- [x] Filtering and sorting
+- [x] Instrument summaries
+- [x] Profit/loss timeline
+- [x] Calculation edge-case tests
 
 ## Milestone 3 - React dashboard
 

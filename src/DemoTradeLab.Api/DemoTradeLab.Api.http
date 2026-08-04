@@ -10,6 +10,26 @@ Accept: application/json
 
 ###
 
+GET {{DemoTradeLab.Api_HostAddress}}/api/trades?instrument=EUR%2FUSD&outcome=profitable&sortBy=realizedProfitLoss&sortDirection=descending
+Accept: application/json
+
+###
+
+GET {{DemoTradeLab.Api_HostAddress}}/api/analytics/dashboard
+Accept: application/json
+
+###
+
+GET {{DemoTradeLab.Api_HostAddress}}/api/analytics/instruments
+Accept: application/json
+
+###
+
+GET {{DemoTradeLab.Api_HostAddress}}/api/analytics/profit-loss-timeline
+Accept: application/json
+
+###
+
 POST {{DemoTradeLab.Api_HostAddress}}/api/trades
 Content-Type: application/json
 

@@ -133,6 +133,50 @@ public sealed class TradesControllerTests : IAsyncLifetime
         Assert.Contains(nameof(SaveTradeRequest.OpeningPrice), problem.Errors.Keys);
     }
 
+    [Fact]
+    public async Task List_WithFiltersAndSorting_ReturnsMatchingTradesInRequestedOrder()
+    {
+        await CreateTradeAsync(CreateValidRequest() with
+        {
+            RealizedProfitLoss = 2.10m
+        });
+        await CreateTradeAsync(CreateValidRequest() with
+        {
+            Direction = TradeDirection.Sell,
+            OpenedAtUtc = CreateValidRequest().OpenedAtUtc.GetValueOrDefault().AddHours(1),
+            ClosedAtUtc = CreateValidRequest().ClosedAtUtc.GetValueOrDefault().AddHours(1),
+            RealizedProfitLoss = 10.05m
+        });
+        await CreateTradeAsync(CreateValidRequest() with
+        {
+            OpenedAtUtc = CreateValidRequest().OpenedAtUtc.GetValueOrDefault().AddHours(2),
+            ClosedAtUtc = CreateValidRequest().ClosedAtUtc.GetValueOrDefault().AddHours(2),
+            RealizedProfitLoss = -5m
+        });
+
+        var trades = await _client.GetFromJsonAsync<TradeResponse[]>(
+            "/api/trades?instrument=eur%2Fusd&currency=usd&outcome=profitable" +
+            "&sortBy=realizedProfitLoss&sortDirection=descending",
+            JsonOptions);
+
+        Assert.NotNull(trades);
+        Assert.Equal([10.05m, 2.10m], trades.Select(trade => trade.RealizedProfitLoss));
+    }
+
+    [Fact]
+    public async Task List_WithNonUtcDateFilter_ReturnsValidationProblemDetails()
+    {
+        var timestamp = Uri.EscapeDataString("2026-08-04T10:00:00+02:00");
+
+        var response = await _client.GetAsync(
+            $"/api/trades?closedFromUtc={timestamp}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.Contains(nameof(ListTradesQueryRequest.ClosedFromUtc), problem.Errors.Keys);
+    }
+
     private static SaveTradeRequest CreateValidRequest() => new()
     {
         Instrument = "EUR/USD",
@@ -147,6 +191,16 @@ public sealed class TradesControllerTests : IAsyncLifetime
         Fees = null,
         FinancingCosts = null
     };
+
+    private async Task CreateTradeAsync(SaveTradeRequest request)
+    {
+        var response = await _client.PostAsJsonAsync(
+            "/api/trades",
+            request,
+            JsonOptions);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
 
     private static JsonSerializerOptions CreateJsonOptions()
     {
