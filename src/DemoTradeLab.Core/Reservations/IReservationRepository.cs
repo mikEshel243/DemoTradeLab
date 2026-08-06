@@ -26,7 +26,19 @@ public interface IReservationRepository
         Guid accountId,
         CancellationToken cancellationToken);
 
+    Task<ReservationIdempotencyRecord?> GetIdempotencyRecordAsync(
+        Guid accountId,
+        string key,
+        CancellationToken cancellationToken);
+
+    Task<IReservationTransaction> BeginTransactionAsync(
+        CancellationToken cancellationToken);
+
     void Add(DemoReservation reservation);
+
+    void Add(ReservationIdempotencyRecord idempotencyRecord);
+
+    void Add(ReservationAuditEntry auditEntry);
 
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

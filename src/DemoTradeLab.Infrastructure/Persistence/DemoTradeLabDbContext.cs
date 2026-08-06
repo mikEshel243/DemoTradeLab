@@ -14,6 +14,12 @@ public sealed class DemoTradeLabDbContext(DbContextOptions<DemoTradeLabDbContext
 
     public DbSet<DemoReservation> DemoReservations => Set<DemoReservation>();
 
+    public DbSet<ReservationIdempotencyRecord> ReservationIdempotencyRecords =>
+        Set<ReservationIdempotencyRecord>();
+
+    public DbSet<ReservationAuditEntry> ReservationAuditEntries =>
+        Set<ReservationAuditEntry>();
+
     public DbSet<Trade> Trades => Set<Trade>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

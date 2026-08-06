@@ -102,9 +102,7 @@ public sealed class ReservationsControllerTests : IAsyncLifetime
     [Fact]
     public async Task Create_WithInsufficientFunds_ReturnsConflictWithoutChangingState()
     {
-        var response = await _client.PostAsJsonAsync(
-            ReservationsUrl(),
-            new CreateReservationRequest { Amount = 120m });
+        var response = await PostCreateRequestAsync(120m, "insufficient-1");
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
@@ -113,14 +111,28 @@ public sealed class ReservationsControllerTests : IAsyncLifetime
         Assert.Empty((await _client.GetFromJsonAsync<ReservationResponse[]>(
             ReservationsUrl(),
             JsonOptions))!);
+
+        var replayResponse = await PostCreateRequestAsync(120m, "insufficient-1");
+        Assert.Equal(HttpStatusCode.Conflict, replayResponse.StatusCode);
+        Assert.Equal(
+            "true",
+            Assert.Single(replayResponse.Headers.GetValues("Idempotency-Replayed")));
+
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<DemoTradeLabDbContext>();
+        Assert.Empty(context.DemoReservations);
+        Assert.Equal(
+            ReservationIdempotencyOutcome.InsufficientFunds,
+            Assert.Single(context.ReservationIdempotencyRecords).Outcome);
+        Assert.Equal(
+            ReservationAuditEventType.RejectedInsufficientFunds,
+            Assert.Single(context.ReservationAuditEntries).EventType);
     }
 
     [Fact]
     public async Task Create_WithInvalidAmount_ReturnsAutomaticValidationProblem()
     {
-        var response = await _client.PostAsJsonAsync(
-            ReservationsUrl(),
-            new CreateReservationRequest { Amount = 0m });
+        var response = await PostCreateRequestAsync(0m, "invalid-1");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
@@ -133,9 +145,10 @@ public sealed class ReservationsControllerTests : IAsyncLifetime
     {
         var missingAccountId = Guid.NewGuid();
 
-        var response = await _client.PostAsJsonAsync(
-            $"/api/demo-accounts/{missingAccountId}/reservations",
-            new CreateReservationRequest { Amount = 10m });
+        var response = await PostCreateRequestAsync(
+            10m,
+            "missing-account-1",
+            $"/api/demo-accounts/{missingAccountId}/reservations");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
@@ -184,17 +197,92 @@ public sealed class ReservationsControllerTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    private async Task<ReservationResponse> CreateReservationAsync(decimal amount)
+    [Fact]
+    public async Task Create_WithSameIdempotencyKey_ReplaysPersistedReservationOnce()
+    {
+        const string idempotencyKey = "replay-success-1";
+        var firstResponse = await PostCreateRequestAsync(80m, idempotencyKey);
+        var first = await ReadReservationAsync(firstResponse);
+
+        var replayResponse = await PostCreateRequestAsync(80m, idempotencyKey);
+        var replay = await ReadReservationAsync(replayResponse);
+
+        Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, replayResponse.StatusCode);
+        Assert.False(firstResponse.Headers.Contains("Idempotency-Replayed"));
+        Assert.Equal(
+            "true",
+            Assert.Single(replayResponse.Headers.GetValues("Idempotency-Replayed")));
+        Assert.Equal(first.Id, replay.Id);
+        await AssertBalancesAsync(total: 100m, reserved: 80m, available: 20m);
+
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<DemoTradeLabDbContext>();
+        Assert.Single(context.DemoReservations);
+        Assert.Single(context.ReservationIdempotencyRecords);
+        Assert.Single(context.ReservationAuditEntries);
+    }
+
+    [Fact]
+    public async Task Create_WithReusedKeyAndDifferentAmount_ReturnsConflict()
+    {
+        const string idempotencyKey = "replay-conflict-1";
+        var firstResponse = await PostCreateRequestAsync(80m, idempotencyKey);
+        Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
+
+        var conflictResponse = await PostCreateRequestAsync(70m, idempotencyKey);
+
+        Assert.Equal(HttpStatusCode.Conflict, conflictResponse.StatusCode);
+        Assert.Equal(
+            "true",
+            Assert.Single(conflictResponse.Headers.GetValues("Idempotency-Replayed")));
+        await AssertBalancesAsync(total: 100m, reserved: 80m, available: 20m);
+    }
+
+    [Fact]
+    public async Task Create_WithoutIdempotencyKey_ReturnsValidationProblem()
     {
         var response = await _client.PostAsJsonAsync(
             ReservationsUrl(),
-            new CreateReservationRequest { Amount = amount });
+            new CreateReservationRequest { Amount = 10m });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.Contains("Idempotency-Key", problem!.Errors.Keys);
+        await AssertBalancesAsync(total: 100m, reserved: 0m, available: 100m);
+    }
+
+    private async Task<ReservationResponse> CreateReservationAsync(decimal amount)
+    {
+        var response = await PostCreateRequestAsync(
+            amount,
+            $"test-{Guid.NewGuid():N}");
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.NotNull(response.Headers.Location);
-        return Assert.IsType<ReservationResponse>(
-            await response.Content.ReadFromJsonAsync<ReservationResponse>(JsonOptions));
+        return await ReadReservationAsync(response);
     }
+
+    private async Task<HttpResponseMessage> PostCreateRequestAsync(
+        decimal amount,
+        string idempotencyKey,
+        string? requestUrl = null)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            requestUrl ?? ReservationsUrl())
+        {
+            Content = JsonContent.Create(new CreateReservationRequest { Amount = amount })
+        };
+        request.Headers.Add("Idempotency-Key", idempotencyKey);
+
+        return await _client.SendAsync(request);
+    }
+
+    private static async Task<ReservationResponse> ReadReservationAsync(
+        HttpResponseMessage response) =>
+        Assert.IsType<ReservationResponse>(
+            await response.Content.ReadFromJsonAsync<ReservationResponse>(JsonOptions));
 
     private async Task AssertBalancesAsync(
         decimal total,

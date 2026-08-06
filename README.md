@@ -32,13 +32,13 @@ The repository foundation, trade CRUD backend, analytics API, React dashboard, a
 - SQLite-persisted account balances that are not reset by later configuration initialization
 - `GET /api/demo-profiles` with total, reserved, and calculated available balances
 
-Milestone 5A now provides the sequential reservation lifecycle. Locking, durable idempotency, audit, and deterministic concurrent-request verification remain planned for Milestones 5B and 5C. Importing is no longer a roadmap milestone.
+Milestones 5A and 5B now provide the reservation lifecycle, per-account locking, explicit transactions, durable idempotency, and audit records. Deterministic concurrent-request verification remains planned for Milestone 5C. Importing is no longer a roadmap milestone.
 
 ## Planned lock-based concurrency lesson
 
-Milestone 5 will demonstrate an educational balance-reservation scenario in which two concurrent requests try to reserve the same account funds. Milestone 5A implements and tests the sequential create, read, release, and consume flows. Durable idempotency, audit, locking, and deterministic concurrency tests are **not implemented yet**, so the current reservation endpoint must not be described as concurrency-safe.
+Milestone 5 demonstrates an educational balance-reservation scenario in which two concurrent requests try to reserve the same account funds. Milestone 5B protects account state transitions with one local asynchronous lock per account and stores the balance change, reservation, idempotency outcome, and audit event in one explicit transaction. Deterministic full-request concurrency tests remain for Milestone 5C.
 
-The planned first implementation will deliberately demonstrate a lock-based solution. It will use a per-account lock abstraction, an explicit database transaction, durable reservation and idempotency records, and deterministic concurrency tests. With the current SQLite and single-process hosting model, a local lock implementation will be clearly labelled as single-instance coordination rather than a distributed lock. See the roadmap and architectural decisions for the required dependency order and limitations.
+This lock-based implementation is deliberately limited to one application process. It is not a distributed lock and does not claim multi-instance safety with SQLite. See the roadmap and architectural decisions for the boundary and planned deterministic concurrency tests.
 
 ## Prerequisites
 
@@ -106,7 +106,7 @@ In Development, the OpenAPI document is available at `/openapi/v1.json`.
 
 The file is initialization input, not the live account database. Run the explicit database-update command after adding a new configured profile or account. Existing records and balances are preserved; changing an existing configured initial balance does not overwrite its SQLite state.
 
-Each account persists `totalBalance` and `reservedBalance`. The API calculates `availableBalance` as `totalBalance - reservedBalance`, so there is no third stored value that can become inconsistent. Milestone 5A operations now change these balances sequentially; Milestone 5B will add concurrency coordination and explicit transaction/idempotency ownership.
+Each account persists `totalBalance` and `reservedBalance`. The API calculates `availableBalance` as `totalBalance - reservedBalance`, so there is no third stored value that can become inconsistent. Milestone 5B coordinates these changes with a local per-account lock and explicit transaction.
 
 | Method | Route | Result |
 | --- | --- | --- |
@@ -120,11 +120,13 @@ Milestone 5A exposes every supported sequential lifecycle operation. Reservation
 | --- | --- | --- |
 | `GET` | `/api/demo-accounts/{accountId}/reservations` | Lists reservations for an existing demo account |
 | `GET` | `/api/demo-accounts/{accountId}/reservations/{reservationId}` | Returns one reservation |
-| `POST` | `/api/demo-accounts/{accountId}/reservations` | Reserves available funds and returns 201 |
+| `POST` | `/api/demo-accounts/{accountId}/reservations` | Requires `Idempotency-Key`, reserves available funds, and returns 201 |
 | `POST` | `/api/demo-accounts/{accountId}/reservations/{reservationId}/release` | Releases reserved funds back to available balance |
 | `POST` | `/api/demo-accounts/{accountId}/reservations/{reservationId}/consume` | Deducts consumed funds from total and reserved balance |
 
 A creation amount that exceeds available balance returns HTTP 409 without changing persisted state. Invalid request data returns HTTP 400, and missing resources return HTTP 404. Releasing or consuming an already completed reservation returns HTTP 409 in this milestone.
+
+`Idempotency-Key` is an opaque, case-sensitive value of at most 100 characters. Retrying the same account, key, and amount returns the original outcome and adds `Idempotency-Replayed: true`. Reusing the key with a different amount returns HTTP 409. Both successful creation and insufficient-funds rejection are durable, so retry behavior survives an application restart.
 
 See [Backend learning guide](docs/BACKEND_LEARNING_GUIDE.md) for debugger-oriented tests and flow explanations.
 

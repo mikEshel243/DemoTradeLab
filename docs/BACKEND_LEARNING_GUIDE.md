@@ -29,17 +29,22 @@ This layer teaches entity state, invariants, expected result objects, and the di
 
 Open `tests/DemoTradeLab.UnitTests/Reservations/ReservationServiceTests.cs`.
 
-Debug `CreateAsync_WithExistingAccount_OrchestratesDomainAndPersistence` and follow:
+Debug `CreateAsync_WithExistingAccount_PersistsAtomicOperationRecords` and follow:
 
 ```text
 ReservationService.CreateAsync
+    -> lockManager.AcquireAsync
+    -> repository.BeginTransactionAsync
+    -> repository.GetIdempotencyRecordAsync
     -> repository.GetAccountForUpdateAsync
     -> DemoReservation.Create
-    -> repository.Add
+    -> add reservation, idempotency, and audit records
     -> repository.SaveChangesAsync
+    -> transaction.CommitAsync
+    -> release lock
 ```
 
-The in-memory repository is a test double. It isolates orchestration from EF Core and proves that rejected operations do not call save.
+The in-memory repository and immediate lock are test doubles. They isolate orchestration from EF Core and make save/commit/lock counts visible. Next debug `CreateAsync_WithSameKey_ReplaysOriginalSuccessWithoutSavingAgain` and `CreateAsync_WithInsufficientFunds_PersistsAndReplaysRejection` to compare the first operation with a replay.
 
 ## 3. Full HTTP-to-SQLite flow
 
@@ -68,6 +73,8 @@ Other recommended integration tests:
 - `Create_WithInsufficientFunds_ReturnsConflictWithoutChangingState`
 - `Create_ForMissingAccount_ReturnsNotFound`
 - `Consume_ReleasedReservation_ReturnsConflictWithoutSecondBalanceChange`
+- `Create_WithSameIdempotencyKey_ReplaysPersistedReservationOnce`
+- `Create_WithReusedKeyAndDifferentAmount_ReturnsConflict`
 
 These show HTTP 400 validation, HTTP 404 missing resources, HTTP 409 business conflicts, and the rule that rejected requests must not mutate data.
 
@@ -81,6 +88,15 @@ dotnet test DemoTradeLab.sln --filter "FullyQualifiedName~CreateReadListRelease_
 
 For the clearest first walkthrough, place breakpoints in the controller, service, `EfReservationRepository.SaveChangesAsync`, and domain entity, then use Step Into to move between layers.
 
+## Lock-manager behavior
+
+Open `tests/DemoTradeLab.IntegrationTests/LocalAccountLockManagerTests.cs`.
+
+- `AcquireAsync_ForSameAccount_WaitsUntilFirstLeaseIsReleased` shows serialization for one account.
+- `AcquireAsync_ForDifferentAccounts_UsesIndependentLocks` shows why a keyed lock permits unrelated accounts to proceed independently.
+
+Useful breakpoints are `LocalAccountLockManager.AcquireAsync`, `SemaphoreSlim.WaitAsync`, and `AccountLockLease.DisposeAsync`.
+
 ## Current concurrency boundary
 
-Milestone 5A proves sequential correctness only. Do not infer that simultaneous reservation requests are safe. Milestone 5B will deliberately reproduce and then protect that race with a per-account asynchronous lock, explicit transaction boundary, and durable idempotency record. Its tests will use controlled synchronization so the race does not depend on random timing.
+Milestone 5B implements single-process coordination. It does not prove multi-instance safety and a local `SemaphoreSlim` cannot coordinate separate application processes. Milestone 5C will add controlled synchronization around full reservation requests to prove the exact `80 + 80 against 100` outcome without depending on random timing.

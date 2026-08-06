@@ -11,6 +11,7 @@ public sealed class ReservationsController(
     ILogger<ReservationsController> logger) : ControllerBase
 {
     private const string GetReservationByIdRouteName = "GetReservationById";
+    private const string IdempotencyReplayHeaderName = "Idempotency-Replayed";
 
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<ReservationResponse>>(StatusCodes.Status200OK)]
@@ -51,13 +52,20 @@ public sealed class ReservationsController(
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<ReservationResponse>> CreateAsync(
         Guid accountId,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
         CreateReservationRequest request,
         CancellationToken cancellationToken)
     {
         var result = await service.CreateAsync(
             accountId,
             request.Amount!.Value,
+            idempotencyKey,
             cancellationToken);
+
+        if (result.IsReplay)
+        {
+            Response.Headers[IdempotencyReplayHeaderName] = "true";
+        }
 
         if (!result.IsSuccess)
         {
@@ -67,9 +75,10 @@ public sealed class ReservationsController(
         var response = result.Reservation.ToResponse();
 
         logger.LogInformation(
-            "Created demo reservation {ReservationId} for account {AccountId}",
+            "Handled demo reservation {ReservationId} for account {AccountId}; replay: {IsReplay}",
             response.Id,
-            accountId);
+            accountId,
+            result.IsReplay);
 
         return CreatedAtRoute(
             GetReservationByIdRouteName,
@@ -149,7 +158,8 @@ public sealed class ReservationsController(
                 ReservationErrorCode.InsufficientFunds or
                 ReservationErrorCode.ReservationNotActive or
                 ReservationErrorCode.AccountMismatch or
-                ReservationErrorCode.BalanceInvariantViolation))
+                ReservationErrorCode.BalanceInvariantViolation or
+                ReservationErrorCode.IdempotencyConflict))
         {
             return Problem(
                 statusCode: StatusCodes.Status409Conflict,

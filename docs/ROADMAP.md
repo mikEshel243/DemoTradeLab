@@ -79,14 +79,17 @@ Status: Complete
 
 ### 5B - Atomic lock-based reservation
 
-- Add `IAccountLockManager` and a keyed local implementation using one asynchronous lock per account
-- Acquire the account lock before reading authoritative state
-- Acquire only one account lock in the initial operation; require a stable global account-ID order before any future operation may acquire multiple locks
-- Inside the minimum critical section, begin a transaction, check durable idempotency, load the account, validate available funds, create the reservation and audit record, save, and commit
-- Add a durable idempotency key with a database uniqueness constraint
-- Add an `Idempotency-Key` header to `POST /api/demo-accounts/{accountId}/reservations`
-- Map expected business outcomes to response DTOs and Problem Details without exception-based business control flow
-- Record structured logs without sensitive data
+Status: Complete
+
+- [x] Add `IAccountLockManager` and a keyed local implementation using one asynchronous lock per account
+- [x] Acquire the account lock before reading authoritative state
+- [x] Acquire only one account lock in the initial operation; require a stable global account-ID order before any future operation may acquire multiple locks
+- [x] Inside the minimum critical section, begin a transaction, check durable idempotency, load the account, validate available funds, create the reservation and audit record, save, and commit
+- [x] Add a durable idempotency key with a database uniqueness constraint
+- [x] Add an `Idempotency-Key` header to `POST /api/demo-accounts/{accountId}/reservations`
+- [x] Replay the original success or insufficient-funds rejection and reject same-key/different-amount reuse
+- [x] Map expected business outcomes to response DTOs and Problem Details without exception-based business control flow
+- [x] Record structured logs without idempotency keys or sensitive data
 
 ### 5C - Deterministic concurrency verification
 
@@ -114,7 +117,7 @@ Status: Complete
 - Do not claim multi-instance safety until a provider-specific database-locking strategy is implemented and tested
 - A future multi-instance exercise may use a server database with genuine row locking, but no new external infrastructure is part of the current MVP
 
-Readiness for 5B: sequential state transitions and reservation persistence now exist. Add transaction ownership and durable idempotency together with the account lock; do not treat the current sequential endpoint as concurrency-safe.
+Readiness for 5C: the single-instance lock, transaction, idempotency, and audit foundations now exist. Add controlled synchronization around full service requests to prove exact concurrent outcomes without timing-dependent tests.
 
 ## Milestone 6 - Final polish
 

@@ -1,6 +1,7 @@
 using DemoTradeLab.Core.DemoProfiles;
 using DemoTradeLab.Core.Reservations;
 using DemoTradeLab.Core.Trades;
+using DemoTradeLab.Infrastructure.Concurrency;
 using DemoTradeLab.Infrastructure.Persistence;
 using DemoTradeLab.Infrastructure.Persistence.Repositories;
 using DemoTradeLab.Infrastructure.Persistence.Seeding;
@@ -33,6 +34,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IDemoProfileRepository, EfDemoProfileRepository>();
         services.AddScoped<IReservationRepository, EfReservationRepository>();
         services.AddScoped<ITradeRepository, EfTradeRepository>();
+        services.AddSingleton<IAccountLockManager, LocalAccountLockManager>();
 
         return services;
     }

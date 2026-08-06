@@ -116,14 +116,14 @@
 
 ## ADR-020: Use a per-account local asynchronous lock for the first locking lesson
 
-- **Status:** Proposed for Milestone 5
+- **Status:** Accepted
 - **Decision:** Define `IAccountLockManager` in Core and initially implement it in Infrastructure with keyed `SemaphoreSlim` instances. Hold the lease only around the authoritative read, invariant check, reservation/idempotency/audit writes, and explicit transaction commit. Always release it through an async-disposable lease.
 - **Reason:** Unlike C# `lock`/`Monitor`, `SemaphoreSlim.WaitAsync` supports asynchronous EF Core work. Keying by account avoids a global application lock and makes the critical-section boundary visible for teaching and deterministic tests.
 - **Limitation:** The implementation coordinates one application process only. It does not protect multiple server instances and is not a SQLite row lock. SQLite has database-level write-serialization behavior and no SQL Server/PostgreSQL-style `SELECT FOR UPDATE`. A multi-instance variant requires a genuine provider-specific or distributed strategy and separate verification.
 
 ## ADR-021: Make reservation idempotency durable and transactional
 
-- **Status:** Proposed for Milestone 5
+- **Status:** Accepted
 - **Decision:** Persist the idempotency key with a uniqueness constraint and create its outcome, balance mutation, reservation, and audit record in the same transaction. A duplicate completed key returns the original outcome; a same-account duplicate still in progress waits on the account lock and then reads the committed result. Failed transactions leave no successful idempotency outcome and may be retried according to an explicit retry policy.
 - **Reason:** An in-memory dictionary is lost on restart and cannot coordinate multiple processes. Keeping idempotency and the state transition in one transaction prevents a successful balance reservation from existing without its retry record, or vice versa.
 
@@ -168,3 +168,9 @@
 - **Status:** Accepted
 - **Decision:** Milestone 5A persists each sequential account/reservation transition in one EF Core `SaveChanges` operation. Explicitly label it as not concurrency-safe; add the keyed lock, explicit transaction boundary, and durable idempotency together in Milestone 5B.
 - **Reason:** The staged implementation gives a runnable baseline and makes the later race condition observable. Claiming concurrency safety before coordination and idempotency exist would teach the wrong guarantee.
+
+## ADR-029: Persist both successful and rejected idempotency outcomes
+
+- **Status:** Accepted
+- **Decision:** Store successful creation and insufficient-funds rejection outcomes using a unique `(DemoAccountId, Key)` constraint. Treat keys as case-sensitive opaque values. Replay only when the requested amount matches; return conflict for same-key/different-amount reuse.
+- **Reason:** A retry must not produce a different decision merely because balance changed later. Including the request amount prevents one key from accidentally representing two different operations, while the database constraint remains a durable backstop.

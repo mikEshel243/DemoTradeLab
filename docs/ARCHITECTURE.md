@@ -173,37 +173,37 @@ Vite proxies relative `/api` requests during development. This avoids weakening 
 
 ASP.NET Core serializes `decimal` values as JSON numbers, which browsers parse as JavaScript `number` values. The frontend therefore uses them for display and chart coordinates only; it never recomputes authoritative financial aggregates. A future requirement for client-side financial arithmetic would need a string-based decimal API contract or a decimal library.
 
-## Planned reliability-simulator architecture
+## Reliability-simulator architecture
 
-The `DemoProfile` and `DemoAccount` foundation is implemented in Milestone 4. Milestone 5A adds sequential reservation transitions and persistence. Explicit transaction orchestration, idempotency, audit, order, and locking components remain later Milestone 5 targets.
+The `DemoProfile` and `DemoAccount` foundation is implemented in Milestone 4. Milestone 5A adds reservation transitions and persistence. Milestone 5B adds explicit transactions, durable idempotency/audit records, and a keyed local asynchronous lock. Orders and recovery scenarios remain later targets.
 
-### Current sequential reservation flow
+### Current atomic reservation flow
 
 ```text
-HTTP request + automatic DTO validation
+HTTP request + DTO and Idempotency-Key validation
     |
     v
 ReservationsController -> ReservationService
     |
     v
-IReservationRepository loads tracked account/reservation
+IAccountLockManager.AcquireAsync(accountId)
     |
     v
-DemoReservation coordinates DemoAccount invariant transition
+begin EF transaction -> check durable idempotency -> load account
     |
     v
-one EF SaveChanges -> account and reservation stored atomically in SQLite
+domain transition -> reservation/idempotency/audit writes -> save -> commit
 ```
 
-Create changes `ReservedBalance` only. Release subtracts the amount from `ReservedBalance`. Consume subtracts it from both `ReservedBalance` and `TotalBalance`. Expected rejections return `ReservationOperationResult`; exceptions remain reserved for unexpected technical failures. `TimeProvider` supplies UTC timestamps so orchestration tests can use a deterministic clock.
+Create changes `ReservedBalance` only. Release subtracts the amount from `ReservedBalance`. Consume subtracts it from both `ReservedBalance` and `TotalBalance`. All three account mutations use the same keyed lock and explicit transaction. Expected rejections return `ReservationOperationResult`; exceptions remain reserved for unexpected technical failures. `TimeProvider` supplies UTC timestamps so orchestration tests can use a deterministic clock.
 
-One EF Core `SaveChanges` call atomically persists the account and reservation changes for a sequential request. It does not prevent two requests from reading the same earlier balance concurrently. Milestone 5B will add the explicit critical section, transaction ownership, and durable idempotency needed for that lesson.
+Reservation creation persists the account balance, reservation or durable rejection, idempotency record, and audit event before committing. A retry with the same amount replays the stored result; a different amount with the same key is rejected. The database uniqueness constraint protects the durable key, while the local lock prevents same-process requests from reaching that constraint concurrently for one account.
 
 ```text
 POST /api/demo-accounts/{accountId}/reservations
     |
     v
-AccountsController and request DTO validation
+ReservationsController and request/header validation
     |
     v
 ReservationService
@@ -212,17 +212,17 @@ ReservationService
     |        `-- local keyed SemaphoreSlim implementation for the first lesson
     |
     v
-IAccountRepository and IReservationRepository
+IReservationRepository
     |
     v
 EF Core explicit transaction -> SQLite
 ```
 
-Core owns `DemoAccount`, protected balance transitions, the reservation lifecycle, operation results, and application service. Api owns DTOs, status-code mapping, Problem Details, and structured operation logging. Infrastructure owns account/reservation EF mappings and repositories. Later steps will add the lock interface to Core and transaction, durable idempotency/audit persistence, and the clearly named local lock implementation to Infrastructure.
+Core owns `DemoAccount`, protected balance transitions, reservation/idempotency/audit models, operation results, transaction/lock interfaces, and application service. Api owns DTOs, header validation, status-code mapping, Problem Details, and structured operation logging. Infrastructure owns EF mappings, transaction implementation, repositories, and the clearly named local lock implementation.
 
 `AvailableBalance` is calculated as `TotalBalance - ReservedBalance`, keeping one source of truth instead of persisting three values that can disagree. State-transition methods reject operations that would make reserved balance negative, greater than total balance, or available balance negative.
 
-### Planned critical section
+### Implemented critical section
 
 ```text
 Acquire the lock for one account
@@ -237,7 +237,7 @@ Acquire the lock for one account
 Release the lock through an async-disposable lease
 ```
 
-The lock must be released by `await using`/`DisposeAsync` even when cancellation or an exception occurs. External calls, notifications, artificial sleeps, and long calculations do not belong inside the critical section. Consuming or releasing a reservation later will be a separate idempotent, locked transaction.
+The lock is released by `await using`/`DisposeAsync` even when cancellation or an exception occurs. External calls, notifications, artificial sleeps, and long calculations do not belong inside the critical section. Consume and release already use locked transactions, but making their retries idempotent remains Milestone 5D work.
 
 ### Planned concurrent request sequence
 
@@ -276,4 +276,4 @@ The expected final state is total `100`, reserved `80`, and available `20`. A re
 
 ## Deferred design
 
-The reliability simulator now has authoritative persisted account and reservation foundations. Its idempotency, audit, explicit transaction, and locking types remain deferred to later Milestone 5 stages so they are introduced together with the guarantees they must protect.
+The reliability simulator now has authoritative account, reservation, idempotency, audit, transaction, and single-process locking foundations. Deterministic full-request concurrency tests remain Milestone 5C work; idempotent completion and recovery/order scenarios remain Milestone 5D work.

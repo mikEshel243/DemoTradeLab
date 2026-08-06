@@ -10,5 +10,8 @@ public enum ReservationErrorCode
     AccountMismatch = 6,
     TimestampMustBeUtc = 7,
     TimestampBeforeCreation = 8,
-    BalanceInvariantViolation = 9
+    BalanceInvariantViolation = 9,
+    IdempotencyKeyRequired = 10,
+    IdempotencyKeyTooLong = 11,
+    IdempotencyConflict = 12
 }
