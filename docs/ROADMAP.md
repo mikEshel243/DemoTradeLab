@@ -55,10 +55,54 @@ Status: Planned
 
 Status: Planned
 
-- Explicit order state machine
-- Idempotency and retry safety
-- Simulated failure and concurrency scenarios
-- Audit events and reconciliation
+This milestone is a separate educational module. Its primary concurrency example will use locking; optimistic concurrency may be compared as an alternative but will not silently replace the lock-based lesson.
+
+### 5A - Account and reservation foundation
+
+- Add an `Account` aggregate with `TotalBalance`, `ReservedBalance`, and calculated `AvailableBalance`
+- Enforce `0 <= ReservedBalance <= TotalBalance` inside the domain
+- Add the minimum useful reservation lifecycle: `Active`, `Released`, and `Consumed`
+- Add explicit result types for success, insufficient funds, account not found, and validation rejection
+- Add focused account/reservation repositories, EF Core mappings, a migration, and fictional seed data
+
+### 5B - Atomic lock-based reservation
+
+- Add `IAccountLockManager` and a keyed local implementation using one asynchronous lock per account
+- Acquire the account lock before reading authoritative state
+- Acquire only one account lock in the initial operation; require a stable global account-ID order before any future operation may acquire multiple locks
+- Inside the minimum critical section, begin a transaction, check durable idempotency, load the account, validate available funds, create the reservation and audit record, save, and commit
+- Add a durable idempotency key with a database uniqueness constraint
+- Expose `POST /api/accounts/{accountId}/reservations` with an `Idempotency-Key` header
+- Map expected business outcomes to response DTOs and Problem Details without exception-based business control flow
+- Record structured logs without sensitive data
+
+### 5C - Deterministic concurrency verification
+
+- Prove that concurrent reservations of `80` and `80` against a balance of `100` produce exactly one success and one insufficient-funds rejection
+- Use a barrier, gate, or controlled test hook so overlap is deterministic rather than timing-dependent
+- Prove that different account keys do not share one global application lock
+- Prove that a duplicate idempotency key returns the original result and reserves funds once
+- Prove that insufficient funds do not modify state
+- Prove that cancellation and exceptions always release the lock
+- Prove the single-lock rule and document ordered acquisition for any future multi-account operation
+- Assert account balance invariants after every relevant test
+
+### 5D - Reservation completion and recovery
+
+- Add idempotent consume and release operations
+- Demonstrate release or compensation after a later operation fails
+- Add an explicit order state machine and distinguish technical failure from business rejection
+- Add retry-safety, audit-history, reconciliation, and simulated failure scenarios
+
+### SQLite and multi-instance boundary
+
+- The initial local lock coordinates only requests handled by one application process
+- SQLite does not provide SQL Server/PostgreSQL-style row-level `SELECT FOR UPDATE` semantics
+- SQLite may still serialize database writes even when different account application locks are independent
+- Do not claim multi-instance safety until a provider-specific database-locking strategy is implemented and tested
+- A future multi-instance exercise may use a server database with genuine row locking, but no new external infrastructure is part of the current MVP
+
+Readiness: begin 5A only when the project reaches Milestone 5, or after an explicit roadmap reprioritization. Do not start with the lock manager alone; authoritative account state, persistence mappings, transaction ownership, and reservation/idempotency models are prerequisites.
 
 ## Milestone 6 - Final polish
 

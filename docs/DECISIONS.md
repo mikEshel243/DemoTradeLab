@@ -107,3 +107,22 @@
 - **Status:** Accepted
 - **Decision:** Calculate win rate as profitable trades divided by all completed trades, classify exactly zero profit/loss as break-even, round percentage results to two decimal places, and use explicit alphabetical/time/ID tie-breakers.
 - **Reason:** Analytics are easier to trust, test, and explain when edge-case behavior does not depend on database row order or unstated conventions.
+
+## ADR-019: Stage balance concurrency after its domain and persistence prerequisites
+
+- **Status:** Accepted
+- **Decision:** Keep the lock-based balance-reservation exercise in Milestone 5. Build the account aggregate, reservation lifecycle, result types, persistence mappings, and migration before adding the concurrent reservation operation.
+- **Reason:** A lock is meaningful only when it protects an authoritative state transition. Adding a standalone semaphore now would omit the durable balance, transaction, reservation, idempotency, and failure-recovery behavior that the lesson is intended to demonstrate. It would also interrupt the one-milestone-at-a-time roadmap after Milestone 2.
+
+## ADR-020: Use a per-account local asynchronous lock for the first locking lesson
+
+- **Status:** Proposed for Milestone 5
+- **Decision:** Define `IAccountLockManager` in Core and initially implement it in Infrastructure with keyed `SemaphoreSlim` instances. Hold the lease only around the authoritative read, invariant check, reservation/idempotency/audit writes, and explicit transaction commit. Always release it through an async-disposable lease.
+- **Reason:** Unlike C# `lock`/`Monitor`, `SemaphoreSlim.WaitAsync` supports asynchronous EF Core work. Keying by account avoids a global application lock and makes the critical-section boundary visible for teaching and deterministic tests.
+- **Limitation:** The implementation coordinates one application process only. It does not protect multiple server instances and is not a SQLite row lock. SQLite has database-level write-serialization behavior and no SQL Server/PostgreSQL-style `SELECT FOR UPDATE`. A multi-instance variant requires a genuine provider-specific or distributed strategy and separate verification.
+
+## ADR-021: Make reservation idempotency durable and transactional
+
+- **Status:** Proposed for Milestone 5
+- **Decision:** Persist the idempotency key with a uniqueness constraint and create its outcome, balance mutation, reservation, and audit record in the same transaction. A duplicate completed key returns the original outcome; a same-account duplicate still in progress waits on the account lock and then reads the committed result. Failed transactions leave no successful idempotency outcome and may be retried according to an explicit retry policy.
+- **Reason:** An in-memory dictionary is lost on restart and cannot coordinate multiple processes. Keeping idempotency and the state transition in one transaction prevents a successful balance reservation from existing without its retry record, or vice versa.

@@ -127,6 +127,85 @@ For the bounded local MVP, the repository loads a read-only trade snapshot and C
 
 Counts and durations can span all trades, but money cannot be meaningfully added across currencies. Dashboard performance, best/worst trades, instrument totals, and profit/loss timelines are therefore partitioned by currency. Instrument names are grouped case-insensitively, and deterministic tie-breakers keep responses stable.
 
+## Planned reliability-simulator architecture
+
+The account, reservation, idempotency, audit, and order components described here are a Milestone 5 design target; they do not exist in the current implementation.
+
+```text
+POST /api/accounts/{accountId}/reservations
+    |
+    v
+AccountsController and request DTO validation
+    |
+    v
+ReservationService
+    |
+    +--> IAccountLockManager.AcquireAsync(accountId)
+    |        `-- local keyed SemaphoreSlim implementation for the first lesson
+    |
+    v
+IAccountRepository and IReservationRepository
+    |
+    v
+EF Core explicit transaction -> SQLite
+```
+
+Core will own the `Account` invariants, reservation lifecycle, use-case result types, and repository/lock interfaces. Api will own headers, DTOs, status-code mapping, Problem Details, and structured request logging. Infrastructure will own EF Core mappings, transaction execution, durable idempotency/audit persistence, and the clearly named local lock implementation.
+
+`AvailableBalance` should be calculated as `TotalBalance - ReservedBalance`, keeping one source of truth instead of persisting three values that can disagree. The domain must reject any transition that would make reserved balance negative, greater than total balance, or available balance negative.
+
+### Planned critical section
+
+```text
+Acquire the lock for one account
+    Begin the database transaction
+    Look up the durable idempotency key
+    Load the authoritative account state
+    Validate available balance
+    Increase reserved balance
+    Create the active reservation
+    Create the audit event
+    Save changes and commit
+Release the lock through an async-disposable lease
+```
+
+The lock must be released by `await using`/`DisposeAsync` even when cancellation or an exception occurs. External calls, notifications, artificial sleeps, and long calculations do not belong inside the critical section. Consuming or releasing a reservation later will be a separate idempotent, locked transaction.
+
+### Planned concurrent request sequence
+
+```text
+Request A       Per-account lock       Database       Request B
+    | acquire(account) |                  |               |
+    |----------------->|                  |               |
+    |<-- lease granted |                  |               |
+    |                  |                  | acquire(account)
+    |                  |<---------------------------------|
+    |                  |                  | waits         |
+    | begin/read available=100            |               |
+    |------------------------------------>|               |
+    | reserve 80; commit                  |               |
+    |------------------------------------>|               |
+    | release lease    |                  |               |
+    |----------------->|                  |               |
+    |                  |------------------------------->  |
+    |                  |                  | lease granted |
+    |                  |                  | read 20       |
+    |                  |                  | reject 80     |
+```
+
+The expected final state is total `100`, reserved `80`, and available `20`. A retry with the successful request's idempotency key waits for the same account operation when necessary, then reads the committed idempotency/reservation record and returns the original result without reserving again. A database uniqueness constraint remains the durable backstop.
+
+### Locking semantics and limitations
+
+- C# `lock`/`Monitor` are synchronous, re-entrant, process-local primitives and cannot safely wrap awaited work.
+- `SemaphoreSlim.WaitAsync` supports asynchronous waiting, but it is still process-local and is not a database or distributed lock.
+- A keyed lock avoids one global application lock: Account A and Account B receive different semaphores. SQLite may nevertheless serialize their writes at the database layer.
+- The initial operation acquires exactly one account lock, eliminating lock-order cycles. If a future transfer needs multiple accounts, it must sort account IDs into one global acquisition order and release every lease safely; callers must not choose their own order.
+- Cancellation-aware waiting and async-disposable leases prevent abandoned locks. Lock waits should be observable, but retry loops must not spin aggressively.
+- SQLite does not offer the same row-level pessimistic locking or `SELECT FOR UPDATE` behavior as common server databases. The design must not pretend otherwise.
+- Multiple application instances each have a different in-memory lock manager. Therefore the first educational implementation is correct only for the documented single-instance mode.
+- A production-style multi-instance variant requires a provider that supports genuine row locks or another explicitly designed distributed coordination mechanism, plus cross-instance tests.
+
 ## Deferred design
 
-Imports, frontend integration, and reliability-simulator internals will be designed in their own milestones. This avoids inventing abstractions before their requirements are exercised.
+Imports and frontend integration will be designed in their own milestones. The reliability simulator now has a documented dependency order, but its concrete types and database schema remain deferred until Milestone 5 so they are introduced together with the invariants they must protect.

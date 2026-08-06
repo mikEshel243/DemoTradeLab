@@ -28,6 +28,12 @@ The repository foundation, trade CRUD backend, and Milestone 2 analytics API are
 
 Importing, the React frontend, and the reliability simulator are intentionally deferred to later milestones.
 
+## Planned lock-based concurrency lesson
+
+Milestone 5 will add an educational balance-reservation scenario in which two concurrent requests try to reserve the same account funds. It is **not implemented in the current codebase**: there is currently no account, balance, reservation, order, idempotency, audit, or locking API.
+
+The planned first implementation will deliberately demonstrate a lock-based solution. It will use a per-account lock abstraction, an explicit database transaction, durable reservation and idempotency records, and deterministic concurrency tests. With the current SQLite and single-process hosting model, a local lock implementation will be clearly labelled as single-instance coordination rather than a distributed lock. See the roadmap and architectural decisions for the required dependency order and limitations.
+
 ## Prerequisites
 
 - .NET 10 SDK
