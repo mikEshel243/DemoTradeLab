@@ -108,11 +108,11 @@
 - **Decision:** Calculate win rate as profitable trades divided by all completed trades, classify exactly zero profit/loss as break-even, round percentage results to two decimal places, and use explicit alphabetical/time/ID tie-breakers.
 - **Reason:** Analytics are easier to trust, test, and explain when edge-case behavior does not depend on database row order or unstated conventions.
 
-## ADR-019: Stage balance concurrency after its domain and persistence prerequisites
+## ADR-019: Stage balance concurrency after its reservation prerequisites
 
 - **Status:** Accepted
-- **Decision:** Keep the lock-based balance-reservation exercise in Milestone 5. Build the account aggregate, reservation lifecycle, result types, persistence mappings, and migration before adding the concurrent reservation operation.
-- **Reason:** A lock is meaningful only when it protects an authoritative state transition. Adding a standalone semaphore now would omit the durable balance, transaction, reservation, idempotency, and failure-recovery behavior that the lesson is intended to demonstrate. It would also interrupt the one-milestone-at-a-time roadmap after Milestone 2.
+- **Decision:** Keep the lock-based balance-reservation exercise in Milestone 5. Reuse the persisted Milestone 4 `DemoAccount`, then build protected balance transitions, the reservation lifecycle, result types, transaction ownership, and idempotency before adding the concurrent operation.
+- **Reason:** A lock is meaningful only when it protects an authoritative state transition. The durable balance now exists, but a standalone semaphore would still omit the reservation, transaction, idempotency, and failure-recovery behavior that the lesson is intended to demonstrate.
 
 ## ADR-020: Use a per-account local asynchronous lock for the first locking lesson
 
@@ -144,3 +144,15 @@
 - **Status:** Accepted
 - **Decision:** Render analytics returned by the API and do not recalculate monetary totals or win rates in the browser. JavaScript numbers are limited to display formatting and SVG coordinates.
 - **Reason:** Core uses `decimal`, while JavaScript uses binary floating-point `number`. Keeping calculations on the backend preserves the tested financial rules and avoids two implementations drifting apart.
+
+## ADR-025: Treat demo configuration as initialization, not live state
+
+- **Status:** Accepted
+- **Decision:** Bind and validate `demo-environment.json` into strongly typed options, convert it to Core seed definitions, and add only profiles/accounts whose normalized keys do not exist. Never overwrite an existing persisted record from configuration.
+- **Reason:** Configuration provides reproducible fictional starting data, while SQLite remains authoritative after initialization. This allows later user actions and balance changes to survive restarts, migration commands, and edits to default values.
+
+## ADR-026: Model fictional profiles without authentication
+
+- **Status:** Accepted
+- **Decision:** Name the entities `DemoProfile` and `DemoAccount` and store no password, token, email, brokerage identifier, or other identity credential. Persist total and reserved balances and calculate available balance.
+- **Reason:** The records represent stable actors for repeatable learning scenarios, not real users. Explicit naming and the absence of authentication fields prevent the configuration feature from implying a production identity system or broker connection.

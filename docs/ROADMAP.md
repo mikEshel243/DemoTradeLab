@@ -47,14 +47,17 @@ Status: Complete
 - [x] Responsive layout and reduced-motion support
 - [x] Frontend lint and production build
 
-## Milestone 4 - Importing
+## Milestone 4 - Configurable demo environment
 
-Status: Planned
+Status: Complete
 
-- Generic importer boundary
-- Safe CSV or JSON import
-- Duplicate prevention
-- No broker-specific parser until an anonymized sample is provided
+- [x] Strongly typed and startup-validated fictional profile/account configuration
+- [x] `DemoProfile` and `DemoAccount` domain models with normalized unique keys
+- [x] Persisted total and reserved balances with calculated available balance
+- [x] EF Core mappings, uniqueness constraints, migration, and focused repository
+- [x] Migration-aware initialization that adds missing configured records without overwriting persisted state
+- [x] Read-only `GET /api/demo-profiles` endpoint with explicit response DTOs
+- [x] Domain, configuration, persistence, and endpoint tests
 
 ## Milestone 5 - Reliability simulator
 
@@ -62,13 +65,13 @@ Status: Planned
 
 This milestone is a separate educational module. Its primary concurrency example will use locking; optimistic concurrency may be compared as an alternative but will not silently replace the lock-based lesson.
 
-### 5A - Account and reservation foundation
+### 5A - Reservation foundation and account state transitions
 
-- Add an `Account` aggregate with `TotalBalance`, `ReservedBalance`, and calculated `AvailableBalance`
-- Enforce `0 <= ReservedBalance <= TotalBalance` inside the domain
+- Extend `DemoAccount` with explicit reserve, release, and consume state transitions
+- Enforce `0 <= ReservedBalance <= TotalBalance` for every state transition inside the domain
 - Add the minimum useful reservation lifecycle: `Active`, `Released`, and `Consumed`
 - Add explicit result types for success, insufficient funds, account not found, and validation rejection
-- Add focused account/reservation repositories, EF Core mappings, a migration, and fictional seed data
+- Add focused reservation persistence, EF Core mappings, and a migration; reuse the Milestone 4 demo accounts
 
 ### 5B - Atomic lock-based reservation
 
@@ -107,7 +110,7 @@ This milestone is a separate educational module. Its primary concurrency example
 - Do not claim multi-instance safety until a provider-specific database-locking strategy is implemented and tested
 - A future multi-instance exercise may use a server database with genuine row locking, but no new external infrastructure is part of the current MVP
 
-Readiness: begin 5A only when the project reaches Milestone 5, or after an explicit roadmap reprioritization. Do not start with the lock manager alone; authoritative account state, persistence mappings, transaction ownership, and reservation/idempotency models are prerequisites.
+Readiness: the authoritative demo-account state and persistence mapping now exist. Begin 5A by defining protected balance transitions and the reservation lifecycle; do not start with the lock manager alone because transaction ownership and reservation/idempotency models are still prerequisites.
 
 ## Milestone 6 - Final polish
 

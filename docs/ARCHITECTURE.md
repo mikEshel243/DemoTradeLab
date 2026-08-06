@@ -36,7 +36,7 @@ The `Trade` entity uses a private constructor and a public `Create` factory. Cal
 ### DemoTradeLab.Infrastructure
 
 - Contains the EF Core `DemoTradeLabDbContext`, SQLite entity configuration, and migrations.
-- Implements the focused Core `ITradeRepository` through `EfTradeRepository`.
+- Implements focused Core repositories for trades and demo profiles through EF Core.
 - Is wired into the application by Api through the `AddInfrastructure` dependency-injection extension.
 
 ### Tests
@@ -71,13 +71,13 @@ The domain layer normalizes instrument and currency text, validates completed-tr
 Api configuration
     |
     v
-AddInfrastructure(connection string)
+Validated demo options + AddInfrastructure(connection string, seed definitions)
     |
     v
 DemoTradeLabDbContext -> EF Core SQLite provider -> local SQLite database
 ```
 
-`TradeConfiguration` maps the domain entity without adding EF Core attributes to Core. Enums are stored as readable strings. Financial values remain `decimal`; the SQLite provider stores them as text so their decimal representation survives a round trip without conversion to binary floating point.
+Explicit Infrastructure configurations map `Trade`, `DemoProfile`, and `DemoAccount` without adding EF Core attributes to Core. Enums are stored as readable strings. Financial values remain `decimal`; the SQLite provider stores them as text so their decimal representation survives a round trip without conversion to binary floating point.
 
 Schema changes are represented by committed EF Core migrations. The API does not call `Database.Migrate()` during startup; developers apply migrations explicitly with the repository-local `dotnet-ef` tool.
 
@@ -86,6 +86,25 @@ Schema changes are represented by committed EF Core migrations. The API does not
 EF Core's `UseSeeding` and `UseAsyncSeeding` hooks populate an empty `Trades` table when migrations are explicitly applied. Both paths use the normal `Trade.Create` domain factory, so sample data cannot bypass business validation. The seeder exits when any trade already exists, which makes repeated database-update commands idempotent for the initial dataset.
 
 The eight records are fixed, fictional examples marked with `TradeDataSource.Sample`. They intentionally produce five profitable trades, three losing trades, and a total realized profit/loss of `124 USD`, providing a known dataset for upcoming CRUD and analytics work.
+
+## Configurable demo-environment flow
+
+```text
+demo-environment.json
+    |
+    v
+DemoEnvironmentOptions startup validation
+    |
+    v
+DemoProfileSeed definitions -> EF migration-aware seeding
+    |
+    v
+DemoProfiles + DemoAccounts in SQLite -> GET /api/demo-profiles
+```
+
+Configuration contains fictional initialization values only and no authentication data. Core factories normalize keys and validate names, currencies, balances, and duplicate accounts. Database unique indexes protect profile keys and account keys within a profile as a second line of defense.
+
+Initialization inserts a configured profile or account only when its normalized key is missing. It never updates an existing record, so persisted balances and future actions survive later migration commands or configuration changes. `TotalBalance` and `ReservedBalance` are stored; `AvailableBalance` is calculated as their difference. The read controller returns explicit DTOs and does not expose EF entities.
 
 ## Trade CRUD flow
 
@@ -156,7 +175,7 @@ ASP.NET Core serializes `decimal` values as JSON numbers, which browsers parse a
 
 ## Planned reliability-simulator architecture
 
-The account, reservation, idempotency, audit, and order components described here are a Milestone 5 design target; they do not exist in the current implementation.
+The `DemoProfile` and `DemoAccount` foundation is implemented in Milestone 4. Reservation transitions, transaction orchestration, idempotency, audit, order, and locking components remain Milestone 5 design targets.
 
 ```text
 POST /api/accounts/{accountId}/reservations
@@ -177,9 +196,9 @@ IAccountRepository and IReservationRepository
 EF Core explicit transaction -> SQLite
 ```
 
-Core will own the `Account` invariants, reservation lifecycle, use-case result types, and repository/lock interfaces. Api will own headers, DTOs, status-code mapping, Problem Details, and structured request logging. Infrastructure will own EF Core mappings, transaction execution, durable idempotency/audit persistence, and the clearly named local lock implementation.
+Core already owns the `DemoAccount` model and demo-profile read use case. It will also own protected balance transitions, the reservation lifecycle, use-case result types, and lock interfaces. Api will own headers, DTOs, status-code mapping, Problem Details, and structured request logging. Infrastructure already owns account persistence and will own transaction execution, durable reservation/idempotency/audit persistence, and the clearly named local lock implementation.
 
-`AvailableBalance` should be calculated as `TotalBalance - ReservedBalance`, keeping one source of truth instead of persisting three values that can disagree. The domain must reject any transition that would make reserved balance negative, greater than total balance, or available balance negative.
+`AvailableBalance` is calculated as `TotalBalance - ReservedBalance`, keeping one source of truth instead of persisting three values that can disagree. Milestone 5 state-transition methods must reject any operation that would make reserved balance negative, greater than total balance, or available balance negative.
 
 ### Planned critical section
 
@@ -235,4 +254,4 @@ The expected final state is total `100`, reserved `80`, and available `20`. A re
 
 ## Deferred design
 
-Imports and frontend integration will be designed in their own milestones. The reliability simulator now has a documented dependency order, but its concrete types and database schema remain deferred until Milestone 5 so they are introduced together with the invariants they must protect.
+The reliability simulator now has an authoritative persisted account foundation. Its reservation, idempotency, audit, transaction, and locking types remain deferred until Milestone 5 so they are introduced together with the invariants they must protect.

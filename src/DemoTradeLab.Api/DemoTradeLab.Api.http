@@ -5,6 +5,11 @@ Accept: application/json
 
 ###
 
+GET {{DemoTradeLab.Api_HostAddress}}/api/demo-profiles
+Accept: application/json
+
+###
+
 GET {{DemoTradeLab.Api_HostAddress}}/api/trades
 Accept: application/json
 

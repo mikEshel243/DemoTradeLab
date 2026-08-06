@@ -6,7 +6,7 @@ This is an unofficial educational project. It is not affiliated with, endorsed b
 
 ## Current scope
 
-The repository foundation, trade CRUD backend, analytics API, and Milestone 3 React dashboard are complete:
+The repository foundation, trade CRUD backend, analytics API, React dashboard, and configurable fictional demo environment are complete:
 
 - .NET 10 modular-monolith solution
 - Controller-based ASP.NET Core Web API
@@ -28,12 +28,15 @@ The repository foundation, trade CRUD backend, analytics API, and Milestone 3 Re
 - React 19, TypeScript, and Vite dashboard
 - Responsive summary, timeline, instrument, trade-table, and trade-details views
 - Loading, API-error, empty-result, filtering, and sorting states
+- Startup-validated fictional demo profiles and accounts from `demo-environment.json`
+- SQLite-persisted account balances that are not reset by later configuration initialization
+- `GET /api/demo-profiles` with total, reserved, and calculated available balances
 
-Importing and the reliability simulator are intentionally deferred to later milestones.
+The reliability simulator is intentionally deferred to Milestone 5. Importing is no longer a roadmap milestone.
 
 ## Planned lock-based concurrency lesson
 
-Milestone 5 will add an educational balance-reservation scenario in which two concurrent requests try to reserve the same account funds. It is **not implemented in the current codebase**: there is currently no account, balance, reservation, order, idempotency, audit, or locking API.
+Milestone 5 will add an educational balance-reservation scenario in which two concurrent requests try to reserve the same account funds. The demo profile, account, and durable balance foundation now exists, but reservation state transitions, orders, idempotency, audit, and locking APIs are **not implemented yet**.
 
 The planned first implementation will deliberately demonstrate a lock-based solution. It will use a per-account lock abstraction, an explicit database transaction, durable reservation and idempotency records, and deterministic concurrency tests. With the current SQLite and single-process hosting model, a local lock implementation will be clearly labelled as single-instance coordination rather than a distributed lock. See the roadmap and architectural decisions for the required dependency order and limitations.
 
@@ -70,7 +73,7 @@ dotnet ef database update `
 
 The default SQLite database is `demotrade-lab.db`. Database files are local development artifacts and are ignored by Git.
 
-Database update also seeds eight fictional sample trades when the `Trades` table is empty. Re-running the command does not duplicate them.
+Database update also seeds eight fictional sample trades when the `Trades` table is empty and adds missing fictional profiles/accounts from `src/DemoTradeLab.Api/demo-environment.json`. Re-running the command does not duplicate records or reset balances already stored in SQLite.
 
 Migrations are not applied automatically during API startup. This keeps schema changes explicit and prevents an application instance from unexpectedly changing a database.
 
@@ -96,6 +99,18 @@ Example response:
 ```
 
 In Development, the OpenAPI document is available at `/openapi/v1.json`.
+
+## Fictional demo profiles and accounts
+
+`src/DemoTradeLab.Api/demo-environment.json` defines the initial fictional profiles and accounts. These are not authenticated users: they have no passwords, credentials, tokens, email addresses, or connection to a real broker.
+
+The file is initialization input, not the live account database. Run the explicit database-update command after adding a new configured profile or account. Existing records and balances are preserved; changing an existing configured initial balance does not overwrite its SQLite state.
+
+Each account persists `totalBalance` and `reservedBalance`. The API calculates `availableBalance` as `totalBalance - reservedBalance`, so there is no third stored value that can become inconsistent. Milestone 5 will add the transactional operations that change these balances.
+
+| Method | Route | Result |
+| --- | --- | --- |
+| `GET` | `/api/demo-profiles` | Lists persisted fictional profiles, accounts, and balances |
 
 ## Trade API
 

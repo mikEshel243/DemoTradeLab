@@ -1,0 +1,30 @@
+{
+  "DemoEnvironment": {
+    "Profiles": [
+      {
+        "Key": "primary-demo",
+        "DisplayName": "Primary Demo Profile",
+        "Accounts": [
+          {
+            "Key": "main-account",
+            "DisplayName": "Main Demo Account",
+            "InitialBalance": 1000.00,
+            "Currency": "USD"
+          }
+        ]
+      },
+      {
+        "Key": "concurrency-demo",
+        "DisplayName": "Concurrency Demo Profile",
+        "Accounts": [
+          {
+            "Key": "shared-balance-test",
+            "DisplayName": "Shared Balance Test Account",
+            "InitialBalance": 100.00,
+            "Currency": "USD"
+          }
+        ]
+      }
+    ]
+  }
+}
