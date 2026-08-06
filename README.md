@@ -32,11 +32,11 @@ The repository foundation, trade CRUD backend, analytics API, React dashboard, a
 - SQLite-persisted account balances that are not reset by later configuration initialization
 - `GET /api/demo-profiles` with total, reserved, and calculated available balances
 
-The reliability simulator is intentionally deferred to Milestone 5. Importing is no longer a roadmap milestone.
+Milestone 5A now provides the sequential reservation lifecycle. Locking, durable idempotency, audit, and deterministic concurrent-request verification remain planned for Milestones 5B and 5C. Importing is no longer a roadmap milestone.
 
 ## Planned lock-based concurrency lesson
 
-Milestone 5 will add an educational balance-reservation scenario in which two concurrent requests try to reserve the same account funds. The demo profile, account, and durable balance foundation now exists, but reservation state transitions, orders, idempotency, audit, and locking APIs are **not implemented yet**.
+Milestone 5 will demonstrate an educational balance-reservation scenario in which two concurrent requests try to reserve the same account funds. Milestone 5A implements and tests the sequential create, read, release, and consume flows. Durable idempotency, audit, locking, and deterministic concurrency tests are **not implemented yet**, so the current reservation endpoint must not be described as concurrency-safe.
 
 The planned first implementation will deliberately demonstrate a lock-based solution. It will use a per-account lock abstraction, an explicit database transaction, durable reservation and idempotency records, and deterministic concurrency tests. With the current SQLite and single-process hosting model, a local lock implementation will be clearly labelled as single-instance coordination rather than a distributed lock. See the roadmap and architectural decisions for the required dependency order and limitations.
 
@@ -106,11 +106,27 @@ In Development, the OpenAPI document is available at `/openapi/v1.json`.
 
 The file is initialization input, not the live account database. Run the explicit database-update command after adding a new configured profile or account. Existing records and balances are preserved; changing an existing configured initial balance does not overwrite its SQLite state.
 
-Each account persists `totalBalance` and `reservedBalance`. The API calculates `availableBalance` as `totalBalance - reservedBalance`, so there is no third stored value that can become inconsistent. Milestone 5 will add the transactional operations that change these balances.
+Each account persists `totalBalance` and `reservedBalance`. The API calculates `availableBalance` as `totalBalance - reservedBalance`, so there is no third stored value that can become inconsistent. Milestone 5A operations now change these balances sequentially; Milestone 5B will add concurrency coordination and explicit transaction/idempotency ownership.
 
 | Method | Route | Result |
 | --- | --- | --- |
 | `GET` | `/api/demo-profiles` | Lists persisted fictional profiles, accounts, and balances |
+
+## Reservation lifecycle API
+
+Milestone 5A exposes every supported sequential lifecycle operation. Reservations are not edited or deleted because their state is useful history; business actions move them from `active` to exactly one terminal state.
+
+| Method | Route | Result |
+| --- | --- | --- |
+| `GET` | `/api/demo-accounts/{accountId}/reservations` | Lists reservations for an existing demo account |
+| `GET` | `/api/demo-accounts/{accountId}/reservations/{reservationId}` | Returns one reservation |
+| `POST` | `/api/demo-accounts/{accountId}/reservations` | Reserves available funds and returns 201 |
+| `POST` | `/api/demo-accounts/{accountId}/reservations/{reservationId}/release` | Releases reserved funds back to available balance |
+| `POST` | `/api/demo-accounts/{accountId}/reservations/{reservationId}/consume` | Deducts consumed funds from total and reserved balance |
+
+A creation amount that exceeds available balance returns HTTP 409 without changing persisted state. Invalid request data returns HTTP 400, and missing resources return HTTP 404. Releasing or consuming an already completed reservation returns HTTP 409 in this milestone.
+
+See [Backend learning guide](docs/BACKEND_LEARNING_GUIDE.md) for debugger-oriented tests and flow explanations.
 
 ## Trade API
 

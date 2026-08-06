@@ -1,4 +1,5 @@
 using DemoTradeLab.Core.DemoProfiles;
+using DemoTradeLab.Core.Reservations;
 using DemoTradeLab.Core.Trades;
 using DemoTradeLab.Infrastructure.Persistence;
 using DemoTradeLab.Infrastructure.Persistence.Repositories;
@@ -30,6 +31,7 @@ public static class InfrastructureServiceCollectionExtensions
                         cancellationToken)));
 
         services.AddScoped<IDemoProfileRepository, EfDemoProfileRepository>();
+        services.AddScoped<IReservationRepository, EfReservationRepository>();
         services.AddScoped<ITradeRepository, EfTradeRepository>();
 
         return services;

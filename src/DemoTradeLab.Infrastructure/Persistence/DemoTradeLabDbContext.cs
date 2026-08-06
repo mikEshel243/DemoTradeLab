@@ -1,4 +1,5 @@
 using DemoTradeLab.Core.DemoProfiles;
+using DemoTradeLab.Core.Reservations;
 using DemoTradeLab.Core.Trades;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,6 +11,8 @@ public sealed class DemoTradeLabDbContext(DbContextOptions<DemoTradeLabDbContext
     public DbSet<DemoProfile> DemoProfiles => Set<DemoProfile>();
 
     public DbSet<DemoAccount> DemoAccounts => Set<DemoAccount>();
+
+    public DbSet<DemoReservation> DemoReservations => Set<DemoReservation>();
 
     public DbSet<Trade> Trades => Set<Trade>();
 

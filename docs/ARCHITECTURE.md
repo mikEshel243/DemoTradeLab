@@ -175,10 +175,32 @@ ASP.NET Core serializes `decimal` values as JSON numbers, which browsers parse a
 
 ## Planned reliability-simulator architecture
 
-The `DemoProfile` and `DemoAccount` foundation is implemented in Milestone 4. Reservation transitions, transaction orchestration, idempotency, audit, order, and locking components remain Milestone 5 design targets.
+The `DemoProfile` and `DemoAccount` foundation is implemented in Milestone 4. Milestone 5A adds sequential reservation transitions and persistence. Explicit transaction orchestration, idempotency, audit, order, and locking components remain later Milestone 5 targets.
+
+### Current sequential reservation flow
 
 ```text
-POST /api/accounts/{accountId}/reservations
+HTTP request + automatic DTO validation
+    |
+    v
+ReservationsController -> ReservationService
+    |
+    v
+IReservationRepository loads tracked account/reservation
+    |
+    v
+DemoReservation coordinates DemoAccount invariant transition
+    |
+    v
+one EF SaveChanges -> account and reservation stored atomically in SQLite
+```
+
+Create changes `ReservedBalance` only. Release subtracts the amount from `ReservedBalance`. Consume subtracts it from both `ReservedBalance` and `TotalBalance`. Expected rejections return `ReservationOperationResult`; exceptions remain reserved for unexpected technical failures. `TimeProvider` supplies UTC timestamps so orchestration tests can use a deterministic clock.
+
+One EF Core `SaveChanges` call atomically persists the account and reservation changes for a sequential request. It does not prevent two requests from reading the same earlier balance concurrently. Milestone 5B will add the explicit critical section, transaction ownership, and durable idempotency needed for that lesson.
+
+```text
+POST /api/demo-accounts/{accountId}/reservations
     |
     v
 AccountsController and request DTO validation
@@ -196,9 +218,9 @@ IAccountRepository and IReservationRepository
 EF Core explicit transaction -> SQLite
 ```
 
-Core already owns the `DemoAccount` model and demo-profile read use case. It will also own protected balance transitions, the reservation lifecycle, use-case result types, and lock interfaces. Api will own headers, DTOs, status-code mapping, Problem Details, and structured request logging. Infrastructure already owns account persistence and will own transaction execution, durable reservation/idempotency/audit persistence, and the clearly named local lock implementation.
+Core owns `DemoAccount`, protected balance transitions, the reservation lifecycle, operation results, and application service. Api owns DTOs, status-code mapping, Problem Details, and structured operation logging. Infrastructure owns account/reservation EF mappings and repositories. Later steps will add the lock interface to Core and transaction, durable idempotency/audit persistence, and the clearly named local lock implementation to Infrastructure.
 
-`AvailableBalance` is calculated as `TotalBalance - ReservedBalance`, keeping one source of truth instead of persisting three values that can disagree. Milestone 5 state-transition methods must reject any operation that would make reserved balance negative, greater than total balance, or available balance negative.
+`AvailableBalance` is calculated as `TotalBalance - ReservedBalance`, keeping one source of truth instead of persisting three values that can disagree. State-transition methods reject operations that would make reserved balance negative, greater than total balance, or available balance negative.
 
 ### Planned critical section
 
@@ -254,4 +276,4 @@ The expected final state is total `100`, reserved `80`, and available `20`. A re
 
 ## Deferred design
 
-The reliability simulator now has an authoritative persisted account foundation. Its reservation, idempotency, audit, transaction, and locking types remain deferred until Milestone 5 so they are introduced together with the invariants they must protect.
+The reliability simulator now has authoritative persisted account and reservation foundations. Its idempotency, audit, explicit transaction, and locking types remain deferred to later Milestone 5 stages so they are introduced together with the guarantees they must protect.

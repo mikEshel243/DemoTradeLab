@@ -61,17 +61,21 @@ Status: Complete
 
 ## Milestone 5 - Reliability simulator
 
-Status: Planned
+Status: In progress
 
 This milestone is a separate educational module. Its primary concurrency example will use locking; optimistic concurrency may be compared as an alternative but will not silently replace the lock-based lesson.
 
 ### 5A - Reservation foundation and account state transitions
 
-- Extend `DemoAccount` with explicit reserve, release, and consume state transitions
-- Enforce `0 <= ReservedBalance <= TotalBalance` for every state transition inside the domain
-- Add the minimum useful reservation lifecycle: `Active`, `Released`, and `Consumed`
-- Add explicit result types for success, insufficient funds, account not found, and validation rejection
-- Add focused reservation persistence, EF Core mappings, and a migration; reuse the Milestone 4 demo accounts
+Status: Complete
+
+- [x] Extend `DemoAccount` with explicit reserve, release, and consume state transitions
+- [x] Enforce `0 <= ReservedBalance <= TotalBalance` for every state transition inside the domain
+- [x] Add the minimum useful reservation lifecycle: `Active`, `Released`, and `Consumed`
+- [x] Add explicit result types for success, insufficient funds, account not found, and validation rejection
+- [x] Add focused reservation persistence, EF Core mappings, and a migration; reuse the Milestone 4 demo accounts
+- [x] Expose create, read, list, release, and consume API operations for sequential learning flows
+- [x] Add domain, orchestration, and HTTP-to-SQLite lifecycle tests designed for debugger walkthroughs
 
 ### 5B - Atomic lock-based reservation
 
@@ -80,7 +84,7 @@ This milestone is a separate educational module. Its primary concurrency example
 - Acquire only one account lock in the initial operation; require a stable global account-ID order before any future operation may acquire multiple locks
 - Inside the minimum critical section, begin a transaction, check durable idempotency, load the account, validate available funds, create the reservation and audit record, save, and commit
 - Add a durable idempotency key with a database uniqueness constraint
-- Expose `POST /api/accounts/{accountId}/reservations` with an `Idempotency-Key` header
+- Add an `Idempotency-Key` header to `POST /api/demo-accounts/{accountId}/reservations`
 - Map expected business outcomes to response DTOs and Problem Details without exception-based business control flow
 - Record structured logs without sensitive data
 
@@ -110,7 +114,7 @@ This milestone is a separate educational module. Its primary concurrency example
 - Do not claim multi-instance safety until a provider-specific database-locking strategy is implemented and tested
 - A future multi-instance exercise may use a server database with genuine row locking, but no new external infrastructure is part of the current MVP
 
-Readiness: the authoritative demo-account state and persistence mapping now exist. Begin 5A by defining protected balance transitions and the reservation lifecycle; do not start with the lock manager alone because transaction ownership and reservation/idempotency models are still prerequisites.
+Readiness for 5B: sequential state transitions and reservation persistence now exist. Add transaction ownership and durable idempotency together with the account lock; do not treat the current sequential endpoint as concurrency-safe.
 
 ## Milestone 6 - Final polish
 

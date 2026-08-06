@@ -156,3 +156,15 @@
 - **Status:** Accepted
 - **Decision:** Name the entities `DemoProfile` and `DemoAccount` and store no password, token, email, brokerage identifier, or other identity credential. Persist total and reserved balances and calculate available balance.
 - **Reason:** The records represent stable actors for repeatable learning scenarios, not real users. Explicit naming and the absence of authentication fields prevent the configuration feature from implying a production identity system or broker connection.
+
+## ADR-027: Model reservation completion as explicit state transitions
+
+- **Status:** Accepted
+- **Decision:** Create reservations as `Active` and permit exactly one transition to `Released` or `Consumed`. Release restores available balance; consume decreases both total and reserved balance. Do not expose generic update or delete operations.
+- **Reason:** The API expresses business meaning instead of database CRUD. Terminal records preserve useful history, and entity methods keep account and reservation invariants together for focused debugging and tests.
+
+## ADR-028: Separate sequential correctness from concurrency hardening
+
+- **Status:** Accepted
+- **Decision:** Milestone 5A persists each sequential account/reservation transition in one EF Core `SaveChanges` operation. Explicitly label it as not concurrency-safe; add the keyed lock, explicit transaction boundary, and durable idempotency together in Milestone 5B.
+- **Reason:** The staged implementation gives a runnable baseline and makes the later race condition observable. Claiming concurrency safety before coordination and idempotency exist would teach the wrong guarantee.

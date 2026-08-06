@@ -1,3 +1,5 @@
+using DemoTradeLab.Core.Reservations;
+
 namespace DemoTradeLab.Core.DemoProfiles;
 
 public sealed class DemoAccount
@@ -67,6 +69,75 @@ public sealed class DemoAccount
 
     internal static string NormalizeKey(string? key) =>
         key?.Trim().ToLowerInvariant() ?? string.Empty;
+
+    internal ReservationError? Reserve(decimal amount)
+    {
+        if (amount <= 0m)
+        {
+            return InvalidAmount();
+        }
+
+        if (amount > AvailableBalance)
+        {
+            return new ReservationError(
+                nameof(AvailableBalance),
+                ReservationErrorCode.InsufficientFunds,
+                $"Available balance is {AvailableBalance} {Currency}; requested {amount} {Currency}.");
+        }
+
+        ReservedBalance += amount;
+        return null;
+    }
+
+    internal ReservationError? Release(decimal amount)
+    {
+        var error = ValidateReservedAmount(amount);
+
+        if (error is not null)
+        {
+            return error;
+        }
+
+        ReservedBalance -= amount;
+        return null;
+    }
+
+    internal ReservationError? Consume(decimal amount)
+    {
+        var error = ValidateReservedAmount(amount);
+
+        if (error is not null)
+        {
+            return error;
+        }
+
+        ReservedBalance -= amount;
+        TotalBalance -= amount;
+        return null;
+    }
+
+    private ReservationError? ValidateReservedAmount(decimal amount)
+    {
+        if (amount <= 0m)
+        {
+            return InvalidAmount();
+        }
+
+        if (amount > ReservedBalance || amount > TotalBalance)
+        {
+            return new ReservationError(
+                nameof(ReservedBalance),
+                ReservationErrorCode.BalanceInvariantViolation,
+                "The operation would make the persisted account balance invalid.");
+        }
+
+        return null;
+    }
+
+    private static ReservationError InvalidAmount() => new(
+        nameof(DemoReservation.Amount),
+        ReservationErrorCode.InvalidAmount,
+        "Reservation amount must be greater than zero.");
 
     private static List<DemoProfileValidationError> Validate(
         DemoAccountDraft draft,

@@ -10,6 +10,37 @@ Accept: application/json
 
 ###
 
+# Copy an account ID from the response above before running these requests.
+@DemoAccountId = 00000000-0000-0000-0000-000000000000
+@ReservationId = 00000000-0000-0000-0000-000000000000
+
+GET {{DemoTradeLab.Api_HostAddress}}/api/demo-accounts/{{DemoAccountId}}/reservations
+Accept: application/json
+
+###
+
+POST {{DemoTradeLab.Api_HostAddress}}/api/demo-accounts/{{DemoAccountId}}/reservations
+Content-Type: application/json
+
+{
+  "amount": 80.00
+}
+
+###
+
+GET {{DemoTradeLab.Api_HostAddress}}/api/demo-accounts/{{DemoAccountId}}/reservations/{{ReservationId}}
+Accept: application/json
+
+###
+
+POST {{DemoTradeLab.Api_HostAddress}}/api/demo-accounts/{{DemoAccountId}}/reservations/{{ReservationId}}/release
+
+###
+
+POST {{DemoTradeLab.Api_HostAddress}}/api/demo-accounts/{{DemoAccountId}}/reservations/{{ReservationId}}/consume
+
+###
+
 GET {{DemoTradeLab.Api_HostAddress}}/api/trades
 Accept: application/json
 
