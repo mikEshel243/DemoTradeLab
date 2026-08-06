@@ -32,13 +32,15 @@ The repository foundation, trade CRUD backend, analytics API, React dashboard, a
 - SQLite-persisted account balances that are not reset by later configuration initialization
 - `GET /api/demo-profiles` with total, reserved, and calculated available balances
 
-Milestones 5A and 5B now provide the reservation lifecycle, per-account locking, explicit transactions, durable idempotency, and audit records. Deterministic concurrent-request verification remains planned for Milestone 5C. Importing is no longer a roadmap milestone.
+Milestones 5A through 5C now provide the reservation lifecycle, per-account locking, explicit transactions, durable idempotency/audit records, and deterministic concurrent-request verification. Recovery and completion idempotency remain planned for Milestone 5D. Importing is no longer a roadmap milestone.
 
 ## Planned lock-based concurrency lesson
 
-Milestone 5 demonstrates an educational balance-reservation scenario in which two concurrent requests try to reserve the same account funds. Milestone 5B protects account state transitions with one local asynchronous lock per account and stores the balance change, reservation, idempotency outcome, and audit event in one explicit transaction. Deterministic full-request concurrency tests remain for Milestone 5C.
+Milestone 5 demonstrates an educational balance-reservation scenario in which two concurrent requests try to reserve the same account funds. Milestone 5B protects account state transitions with one local asynchronous lock per account and stores the balance change, reservation, idempotency outcome, and audit event in one explicit transaction. Milestone 5C deterministically proves that two requests for `80` against `100` produce one success, one rejection, and a final available balance of `20`.
 
-This lock-based implementation is deliberately limited to one application process. It is not a distributed lock and does not claim multi-instance safety with SQLite. See the roadmap and architectural decisions for the boundary and planned deterministic concurrency tests.
+This lock-based implementation is deliberately limited to one application process. It is not a distributed lock and does not claim multi-instance safety with SQLite. See the roadmap and architectural decisions for the verified test strategy and remaining boundary.
+
+The concurrency test does not use arbitrary delays. A controlled test lock pauses the first real HTTP request after lock acquisition, observes the second request attempting the same lock, and then releases the first. Separate tests exercise the production lock itself for same-account waiting, different-account independence, cancellation, and exception cleanup.
 
 ## Prerequisites
 

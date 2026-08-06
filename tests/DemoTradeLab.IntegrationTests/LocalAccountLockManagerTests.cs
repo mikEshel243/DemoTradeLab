@@ -42,6 +42,52 @@ public sealed class LocalAccountLockManagerTests
         await using var secondLease = await secondLeaseTask.WaitAsync(TimeSpan.FromSeconds(1));
     }
 
+    [Fact]
+    public async Task AcquireAsync_WhenWaitingIsCancelled_DoesNotAbandonAccountLock()
+    {
+        await using var provider = CreateServiceProvider();
+        var lockManager = provider.GetRequiredService<IAccountLockManager>();
+        var accountId = Guid.NewGuid();
+        var firstLease = await lockManager.AcquireAsync(
+            accountId,
+            CancellationToken.None);
+        using var cancellation = new CancellationTokenSource();
+        var cancelledWait = lockManager.AcquireAsync(accountId, cancellation.Token);
+
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => cancelledWait);
+        await firstLease.DisposeAsync();
+        await using var nextLease = await lockManager.AcquireAsync(
+            accountId,
+            CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public async Task AsyncLease_WhenOperationThrows_ReleasesAccountLock()
+    {
+        await using var provider = CreateServiceProvider();
+        var lockManager = provider.GetRequiredService<IAccountLockManager>();
+        var accountId = Guid.NewGuid();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => ThrowInsideLeaseAsync(lockManager, accountId));
+
+        await using var nextLease = await lockManager.AcquireAsync(
+            accountId,
+            CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(1));
+    }
+
+    private static async Task ThrowInsideLeaseAsync(
+        IAccountLockManager lockManager,
+        Guid accountId)
+    {
+        await using var lease = await lockManager.AcquireAsync(
+            accountId,
+            CancellationToken.None);
+        throw new InvalidOperationException("Controlled test failure.");
+    }
+
     private static ServiceProvider CreateServiceProvider()
     {
         var services = new ServiceCollection();

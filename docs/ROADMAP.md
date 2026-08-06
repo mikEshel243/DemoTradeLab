@@ -93,14 +93,16 @@ Status: Complete
 
 ### 5C - Deterministic concurrency verification
 
-- Prove that concurrent reservations of `80` and `80` against a balance of `100` produce exactly one success and one insufficient-funds rejection
-- Use a barrier, gate, or controlled test hook so overlap is deterministic rather than timing-dependent
-- Prove that different account keys do not share one global application lock
-- Prove that a duplicate idempotency key returns the original result and reserves funds once
-- Prove that insufficient funds do not modify state
-- Prove that cancellation and exceptions always release the lock
-- Prove the single-lock rule and document ordered acquisition for any future multi-account operation
-- Assert account balance invariants after every relevant test
+Status: Complete
+
+- [x] Prove that concurrent reservations of `80` and `80` against a balance of `100` produce exactly one success and one insufficient-funds rejection
+- [x] Use a controlled lock gate so overlap is deterministic rather than timing-dependent
+- [x] Prove that different account keys do not share one global application lock
+- [x] Prove that a concurrent duplicate idempotency key returns the original result and reserves funds once
+- [x] Prove that insufficient funds do not modify account state
+- [x] Prove that cancellation and exceptions always release the production lock
+- [x] Prove the single-lock rule and document ordered acquisition for any future multi-account operation
+- [x] Assert account balance invariants and persisted reservation/idempotency/audit counts
 
 ### 5D - Reservation completion and recovery
 
@@ -117,7 +119,7 @@ Status: Complete
 - Do not claim multi-instance safety until a provider-specific database-locking strategy is implemented and tested
 - A future multi-instance exercise may use a server database with genuine row locking, but no new external infrastructure is part of the current MVP
 
-Readiness for 5C: the single-instance lock, transaction, idempotency, and audit foundations now exist. Add controlled synchronization around full service requests to prove exact concurrent outcomes without timing-dependent tests.
+Readiness for 5D: creation concurrency and retry behavior are now deterministic and verified. Add idempotency to release/consume, then introduce recovery, compensation, and order-state scenarios without weakening the proven single-account critical section.
 
 ## Milestone 6 - Final polish
 

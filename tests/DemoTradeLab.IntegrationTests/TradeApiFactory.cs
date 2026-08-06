@@ -11,9 +11,15 @@ namespace DemoTradeLab.IntegrationTests;
 
 public sealed class TradeApiFactory : WebApplicationFactory<Program>
 {
+    private readonly Action<IServiceCollection>? _configureTestServices;
     private readonly string _databasePath = Path.Combine(
         Path.GetTempPath(),
         $"demotrade-lab-api-tests-{Guid.NewGuid():N}.db");
+
+    public TradeApiFactory(Action<IServiceCollection>? configureTestServices = null)
+    {
+        _configureTestServices = configureTestServices;
+    }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -26,6 +32,8 @@ public sealed class TradeApiFactory : WebApplicationFactory<Program>
 
             services.AddDbContext<DemoTradeLabDbContext>(options =>
                 options.UseSqlite($"Data Source={_databasePath}"));
+
+            _configureTestServices?.Invoke(services);
         });
     }
 

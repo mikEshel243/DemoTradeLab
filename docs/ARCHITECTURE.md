@@ -239,7 +239,7 @@ Release the lock through an async-disposable lease
 
 The lock is released by `await using`/`DisposeAsync` even when cancellation or an exception occurs. External calls, notifications, artificial sleeps, and long calculations do not belong inside the critical section. Consume and release already use locked transactions, but making their retries idempotent remains Milestone 5D work.
 
-### Planned concurrent request sequence
+### Verified concurrent request sequence
 
 ```text
 Request A       Per-account lock       Database       Request B
@@ -263,6 +263,8 @@ Request A       Per-account lock       Database       Request B
 
 The expected final state is total `100`, reserved `80`, and available `20`. A retry with the successful request's idempotency key waits for the same account operation when necessary, then reads the committed idempotency/reservation record and returns the original result without reserving again. A database uniqueness constraint remains the durable backstop.
 
+`ReservationConcurrencyTests` replaces only the lock manager in the test host with a controlled implementation. The first real HTTP request acquires and pauses; the second real HTTP request reports its lock attempt; the test then opens the gate. Everything after the lock boundary—controller, service, EF repository, explicit transaction, domain rules, and temporary SQLite database—is production code. Separate `LocalAccountLockManagerTests` verify the production lock's serialization, per-account independence, cancellation cleanup, and exception cleanup. Together these tests avoid both random sleeps and the false claim that a test double alone proves the production lock.
+
 ### Locking semantics and limitations
 
 - C# `lock`/`Monitor` are synchronous, re-entrant, process-local primitives and cannot safely wrap awaited work.
@@ -276,4 +278,4 @@ The expected final state is total `100`, reserved `80`, and available `20`. A re
 
 ## Deferred design
 
-The reliability simulator now has authoritative account, reservation, idempotency, audit, transaction, and single-process locking foundations. Deterministic full-request concurrency tests remain Milestone 5C work; idempotent completion and recovery/order scenarios remain Milestone 5D work.
+The reliability simulator now has authoritative account, reservation, idempotency, audit, transaction, single-process locking, and deterministic concurrency-test foundations. Idempotent completion and recovery/order scenarios remain Milestone 5D work.

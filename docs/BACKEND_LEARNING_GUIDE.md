@@ -99,4 +99,33 @@ Useful breakpoints are `LocalAccountLockManager.AcquireAsync`, `SemaphoreSlim.Wa
 
 ## Current concurrency boundary
 
-Milestone 5B implements single-process coordination. It does not prove multi-instance safety and a local `SemaphoreSlim` cannot coordinate separate application processes. Milestone 5C will add controlled synchronization around full reservation requests to prove the exact `80 + 80 against 100` outcome without depending on random timing.
+Open `tests/DemoTradeLab.IntegrationTests/ReservationConcurrencyTests.cs` and debug `ConcurrentReservations_OfEightyAgainstOneHundred_ProduceOneSuccess`.
+
+Recommended breakpoint order:
+
+1. `ControlledAccountLockManager.AcquireAsync`
+2. `ReservationService.CreateAsync`
+3. `EfReservationRepository.BeginTransactionAsync`
+4. `DemoReservation.Create`
+5. `EfReservationRepository.SaveChangesAsync`
+6. `EfReservationTransaction.CommitAsync`
+
+The test deliberately performs this sequence:
+
+```text
+start request A
+    -> A acquires the controlled account lock and pauses
+start request B
+    -> B reports that it attempted the same lock and waits
+open A's gate
+    -> A reserves 80 and commits
+    -> A releases the lock
+    -> B loads the new available balance of 20
+    -> B persists an insufficient-funds outcome
+```
+
+Inspect the final assertions for all database effects: one reservation, two idempotency records, two audit entries, total `100`, reserved `80`, and available `20`.
+
+Then debug `ConcurrentDuplicateKey_ReplaysOnePersistedReservation` to see both simultaneous requests return the same reservation ID while only one reservation, idempotency record, and audit entry are stored.
+
+Milestone 5C proves single-process coordination only. A local `SemaphoreSlim` cannot coordinate separate application processes. Multi-instance correctness would require a provider-specific database or distributed coordination strategy and cross-instance tests.

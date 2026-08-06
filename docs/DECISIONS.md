@@ -174,3 +174,9 @@
 - **Status:** Accepted
 - **Decision:** Store successful creation and insufficient-funds rejection outcomes using a unique `(DemoAccountId, Key)` constraint. Treat keys as case-sensitive opaque values. Replay only when the requested amount matches; return conflict for same-key/different-amount reuse.
 - **Reason:** A retry must not produce a different decision merely because balance changed later. Including the request amount prevents one key from accidentally representing two different operations, while the database constraint remains a durable backstop.
+
+## ADR-030: Control concurrency tests with gates instead of timing
+
+- **Status:** Accepted
+- **Decision:** Replace the lock manager only inside the concurrency test host with a controlled implementation that signals first acquisition and second attempt. Run the remaining HTTP, service, transaction, EF Core, domain, and SQLite flow unchanged. Test the production lock separately for serialization, per-account independence, cancellation, and exception release.
+- **Reason:** `Task.Delay`-based race tests can pass or fail depending on machine timing. Explicit gates make the intended overlap deterministic, while the separate component tests prevent the controlled test double from being mistaken for proof of the production lock implementation.
