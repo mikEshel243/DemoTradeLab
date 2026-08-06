@@ -6,7 +6,7 @@ This is an unofficial educational project. It is not affiliated with, endorsed b
 
 ## Current scope
 
-The repository foundation, trade CRUD backend, and Milestone 2 analytics API are complete:
+The repository foundation, trade CRUD backend, analytics API, and Milestone 3 React dashboard are complete:
 
 - .NET 10 modular-monolith solution
 - Controller-based ASP.NET Core Web API
@@ -25,8 +25,11 @@ The repository foundation, trade CRUD backend, and Milestone 2 analytics API are
 - Filterable and sortable trade listing
 - Dashboard statistics, instrument summaries, and profit/loss timeline endpoints
 - Currency-separated monetary analytics
+- React 19, TypeScript, and Vite dashboard
+- Responsive summary, timeline, instrument, trade-table, and trade-details views
+- Loading, API-error, empty-result, filtering, and sorting states
 
-Importing, the React frontend, and the reliability simulator are intentionally deferred to later milestones.
+Importing and the reliability simulator are intentionally deferred to later milestones.
 
 ## Planned lock-based concurrency lesson
 
@@ -38,6 +41,7 @@ The planned first implementation will deliberately demonstrate a lock-based solu
 
 - .NET 10 SDK
 - Git
+- A Node.js version supported by Vite 8; Node.js 24.16.0 was used for this milestone
 
 The foundation was created and verified with .NET SDK 10.0.302.
 
@@ -139,6 +143,33 @@ Win rate is profitable trades divided by all completed trades, including break-e
 
 Analytics currently use `RealizedProfitLoss` as stored. Optional fees and financing costs are exposed separately on a trade and are not subtracted a second time.
 
+## React dashboard
+
+First start the API:
+
+```powershell
+dotnet run --project src/DemoTradeLab.Api
+```
+
+Then start the frontend in a second terminal:
+
+```powershell
+cd web/demotrade-lab-web
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173`. During development, Vite proxies `/api` requests to the API's default HTTP address at `http://localhost:5122`.
+
+Frontend verification commands:
+
+```powershell
+npm run lint
+npm run build
+```
+
+For a separately hosted API, set `VITE_API_BASE_URL` in a local frontend `.env` file. The example file is committed, while local `.env` files remain ignored.
+
 ## Repository structure
 
 ```text
@@ -150,6 +181,8 @@ DemoTradeLab/
 |-- tests/
 |   |-- DemoTradeLab.UnitTests/
 |   `-- DemoTradeLab.IntegrationTests/
+|-- web/
+|   `-- demotrade-lab-web/
 |-- docs/
 |-- AGENTS.md
 |-- README.md

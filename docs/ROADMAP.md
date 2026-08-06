@@ -36,11 +36,16 @@ Status: Complete
 
 ## Milestone 3 - React dashboard
 
-Status: Planned
+Status: Complete
 
-- React, TypeScript, and Vite application
-- Summary, trade table, and trade details
-- Loading, error, empty, and responsive states
+- [x] React, TypeScript, and Vite application
+- [x] Dashboard summary and currency performance
+- [x] Instrument summaries and profit/loss timeline
+- [x] Filterable and sortable trade table
+- [x] Trade-details view backed by the single-trade endpoint
+- [x] Loading, error, and empty states
+- [x] Responsive layout and reduced-motion support
+- [x] Frontend lint and production build
 
 ## Milestone 4 - Importing
 

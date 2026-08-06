@@ -126,3 +126,21 @@
 - **Status:** Proposed for Milestone 5
 - **Decision:** Persist the idempotency key with a uniqueness constraint and create its outcome, balance mutation, reservation, and audit record in the same transaction. A duplicate completed key returns the original outcome; a same-account duplicate still in progress waits on the account lock and then reads the committed result. Failed transactions leave no successful idempotency outcome and may be retried according to an explicit retry policy.
 - **Reason:** An in-memory dictionary is lost on restart and cannot coordinate multiple processes. Keeping idempotency and the state transition in one transaction prevents a successful balance reservation from existing without its retry record, or vice versa.
+
+## ADR-022: Use a Vite development proxy for the local frontend
+
+- **Status:** Accepted
+- **Decision:** Keep browser API paths relative and proxy `/api` from Vite's development server to the ASP.NET Core HTTP endpoint. Support `VITE_API_BASE_URL` for separately hosted builds.
+- **Reason:** The local browser sees one origin, so the backend does not need a permissive development CORS policy. Environment-specific API addresses remain outside committed source code.
+
+## ADR-023: Keep the first dashboard dependency-light
+
+- **Status:** Accepted
+- **Decision:** Use React hooks, the browser `fetch` API, `AbortController`, `Intl` formatting, and an inline SVG timeline. Do not add a server-state, component, or chart library in Milestone 3.
+- **Reason:** One dashboard page does not yet justify those dependencies. Typed API functions and focused hooks already provide clear request boundaries, cancellation, and testable component inputs. Libraries can be added later if repeated complexity creates a concrete need.
+
+## ADR-024: Keep financial calculations authoritative in Core
+
+- **Status:** Accepted
+- **Decision:** Render analytics returned by the API and do not recalculate monetary totals or win rates in the browser. JavaScript numbers are limited to display formatting and SVG coordinates.
+- **Reason:** Core uses `decimal`, while JavaScript uses binary floating-point `number`. Keeping calculations on the backend preserves the tested financial rules and avoids two implementations drifting apart.

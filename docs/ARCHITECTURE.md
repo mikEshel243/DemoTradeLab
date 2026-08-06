@@ -44,6 +44,13 @@ The `Trade` entity uses a private constructor and a public `Create` factory. Cal
 - Unit tests exercise isolated Core business rules.
 - Integration tests exercise the ASP.NET Core application through a test host and an isolated temporary SQLite database.
 
+### demotrade-lab-web
+
+- Hosts the React and TypeScript single-page dashboard built with Vite.
+- Defines browser-facing API response types and a small `fetch` client.
+- Keeps request lifecycle logic in custom hooks and rendering in presentational components.
+- Treats Core analytics as authoritative instead of recalculating monetary results in JavaScript.
+
 ## Current request flow
 
 `GET /api/health` reaches `HealthController`. The controller asks ASP.NET Core's `HealthCheckService` for the aggregate application status and returns an explicit JSON response containing the status and UTC check time.
@@ -126,6 +133,26 @@ Core filtering/sorting or TradeAnalyticsCalculator
 For the bounded local MVP, the repository loads a read-only trade snapshot and Core performs filtering, decimal aggregation, and timeline construction in memory. This preserves exact `decimal` behavior despite SQLite's server-side decimal query limitations. It is not the intended design for an unbounded production dataset; pagination and database-specific aggregation would be introduced before scaling the data volume.
 
 Counts and durations can span all trades, but money cannot be meaningfully added across currencies. Dashboard performance, best/worst trades, instrument totals, and profit/loss timelines are therefore partitioned by currency. Instrument names are grouped case-insensitively, and deterministic tie-breakers keep responses stable.
+
+## Frontend data flow
+
+```text
+Browser at localhost:5173
+    |
+    v
+React components -> custom data hooks -> typed fetch client
+    |                                      |
+    |                                      v
+    `---------------- Vite /api proxy -> ASP.NET Core at localhost:5122
+```
+
+The overview hook loads dashboard statistics, instrument summaries, and timeline data concurrently. The trade-list hook sends filters and sorting to `GET /api/trades`; selecting a row separately calls `GET /api/trades/{id}`. Every effect owns an `AbortController`, so unmounting or changing filters cancels obsolete requests.
+
+Components render explicit loading, error, empty, and success states. The table and detail panel form a responsive workspace on larger screens and stack on smaller screens. The timeline uses a code-native SVG rather than adding a chart dependency for one simple series.
+
+Vite proxies relative `/api` requests during development. This avoids weakening the backend with a broad CORS policy. A separately deployed frontend can provide an absolute `VITE_API_BASE_URL` at build time.
+
+ASP.NET Core serializes `decimal` values as JSON numbers, which browsers parse as JavaScript `number` values. The frontend therefore uses them for display and chart coordinates only; it never recomputes authoritative financial aggregates. A future requirement for client-side financial arithmetic would need a string-based decimal API contract or a decimal library.
 
 ## Planned reliability-simulator architecture
 
