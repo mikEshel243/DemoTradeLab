@@ -129,3 +129,69 @@ Inspect the final assertions for all database effects: one reservation, two idem
 Then debug `ConcurrentDuplicateKey_ReplaysOnePersistedReservation` to see both simultaneous requests return the same reservation ID while only one reservation, idempotency record, and audit entry are stored.
 
 Milestone 5C proves single-process coordination only. A local `SemaphoreSlim` cannot coordinate separate application processes. Multi-instance correctness would require a provider-specific database or distributed coordination strategy and cross-instance tests.
+
+## Idempotent completion flow
+
+Debug `Release_WithSameIdempotencyKey_ReplaysWithoutSecondAuditOrBalanceChange` in `ReservationsControllerTests.cs`.
+
+Follow this order:
+
+```text
+first release request
+    -> validate completion Idempotency-Key
+    -> lock account and begin transaction
+    -> no completion record exists
+    -> release reserved balance
+    -> write completion record and one Released audit event
+    -> commit
+
+retry with the same key
+    -> load completion record
+    -> load already released reservation
+    -> return success with Idempotency-Replayed: true
+    -> no second balance change or audit event
+```
+
+Then debug `Completion_WithReusedKeyForDifferentOperation_ReturnsConflict` to see a release key rejected when reused for consume.
+
+## Order state machine and recovery
+
+Start with the pure domain test `FailThenCompensate_ReleasesReservationInSeparateTransition` in `tests/DemoTradeLab.UnitTests/Orders/DemoOrderTests.cs`.
+
+Important states:
+
+```text
+Pending -> Completed
+Pending -> Failed -> Compensated
+```
+
+Next debug `FailThenCompensate_ReleasesFundsAndClearsRecoveryWork` in `OrdersControllerTests.cs`.
+
+Recommended breakpoints:
+
+1. `OrdersController.MarkFailedAsync`
+2. `OrderService.MarkFailedAsync`
+3. `DemoOrder.MarkFailed`
+4. `OrderService.ReconcileAsync`
+5. `DemoOrder.Compensate`
+6. `DemoReservation.Release`
+7. `EfOrderRepository.SaveChangesAsync`
+8. `EfReservationTransaction.CommitAsync`
+
+Observe that `Failed` does not release money. The reconciliation endpoint reports one failed order requiring compensation. Only the later compensation transaction releases the reservation and changes the order to `Compensated`.
+
+## Technical rollback and retry
+
+Debug `Complete_WhenDatabaseWriteFails_RollsBackAndCanBeRetried` in `OrdersControllerTests.cs`.
+
+The test creates a temporary SQLite trigger that rejects the `Completed` event insert. Step through the domain changes and notice that the tracked objects temporarily look completed inside the request. `SaveChangesAsync` then throws, the transaction is disposed without commit, and the HTTP response is 500. A new request reloads `Pending`, active reservation, and reserved balance `80` from SQLite. After removing the trigger, retry succeeds.
+
+Compare this with `Complete_FailedOrder_ReturnsConflictWithoutChangingFunds`:
+
+- HTTP 409 is an expected business rejection returned as a result.
+- HTTP 500 is an unexpected technical failure caused by persistence.
+- Neither path leaves a partial committed balance/order state.
+
+## Reconciliation
+
+Debug `Reconciliation_WhenPersistedBalanceIsCorrupted_ReportsMismatch`. The test intentionally changes only the test database balance using SQL, then calls the real reconciliation endpoint. The report compares stored `ReservedBalance` with the sum of active reservation amounts and returns `IsBalanceConsistent = false`. It detects but does not automatically repair the mismatch.

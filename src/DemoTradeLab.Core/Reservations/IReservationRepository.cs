@@ -31,12 +31,19 @@ public interface IReservationRepository
         string key,
         CancellationToken cancellationToken);
 
+    Task<ReservationCompletionRecord?> GetCompletionRecordAsync(
+        Guid accountId,
+        string key,
+        CancellationToken cancellationToken);
+
     Task<IReservationTransaction> BeginTransactionAsync(
         CancellationToken cancellationToken);
 
     void Add(DemoReservation reservation);
 
     void Add(ReservationIdempotencyRecord idempotencyRecord);
+
+    void Add(ReservationCompletionRecord completionRecord);
 
     void Add(ReservationAuditEntry auditEntry);
 

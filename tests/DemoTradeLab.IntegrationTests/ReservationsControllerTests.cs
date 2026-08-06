@@ -69,9 +69,10 @@ public sealed class ReservationsControllerTests : IAsyncLifetime
             JsonOptions);
         Assert.Equal(created, Assert.Single(reservations!));
 
-        var releaseResponse = await _client.PostAsync(
-            $"{ReservationUrl(created.Id)}/release",
-            content: null);
+        var releaseResponse = await PostCompletionAsync(
+            created.Id,
+            "release",
+            "release-lifecycle-1");
         Assert.Equal(HttpStatusCode.OK, releaseResponse.StatusCode);
 
         var released = await releaseResponse.Content.ReadFromJsonAsync<ReservationResponse>(
@@ -87,9 +88,10 @@ public sealed class ReservationsControllerTests : IAsyncLifetime
     {
         var created = await CreateReservationAsync(80m);
 
-        var consumeResponse = await _client.PostAsync(
-            $"{ReservationUrl(created.Id)}/consume",
-            content: null);
+        var consumeResponse = await PostCompletionAsync(
+            created.Id,
+            "consume",
+            "consume-lifecycle-1");
 
         Assert.Equal(HttpStatusCode.OK, consumeResponse.StatusCode);
         var consumed = await consumeResponse.Content.ReadFromJsonAsync<ReservationResponse>(
@@ -158,9 +160,10 @@ public sealed class ReservationsControllerTests : IAsyncLifetime
     [Fact]
     public async Task Release_MissingReservation_ReturnsNotFound()
     {
-        var response = await _client.PostAsync(
-            $"{ReservationUrl(Guid.NewGuid())}/release",
-            content: null);
+        var response = await PostCompletionAsync(
+            Guid.NewGuid(),
+            "release",
+            "missing-release-1");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
@@ -171,14 +174,16 @@ public sealed class ReservationsControllerTests : IAsyncLifetime
     public async Task Consume_ReleasedReservation_ReturnsConflictWithoutSecondBalanceChange()
     {
         var created = await CreateReservationAsync(80m);
-        var releaseResponse = await _client.PostAsync(
-            $"{ReservationUrl(created.Id)}/release",
-            content: null);
+        var releaseResponse = await PostCompletionAsync(
+            created.Id,
+            "release",
+            "release-before-consume-1");
         Assert.Equal(HttpStatusCode.OK, releaseResponse.StatusCode);
 
-        var consumeResponse = await _client.PostAsync(
-            $"{ReservationUrl(created.Id)}/consume",
-            content: null);
+        var consumeResponse = await PostCompletionAsync(
+            created.Id,
+            "consume",
+            "consume-after-release-1");
 
         Assert.Equal(HttpStatusCode.Conflict, consumeResponse.StatusCode);
         await AssertBalancesAsync(total: 100m, reserved: 0m, available: 100m);
@@ -252,6 +257,60 @@ public sealed class ReservationsControllerTests : IAsyncLifetime
         await AssertBalancesAsync(total: 100m, reserved: 0m, available: 100m);
     }
 
+    [Fact]
+    public async Task Release_WithSameIdempotencyKey_ReplaysWithoutSecondAuditOrBalanceChange()
+    {
+        var created = await CreateReservationAsync(80m);
+        const string completionKey = "release-replay-1";
+        var firstResponse = await PostCompletionAsync(
+            created.Id,
+            "release",
+            completionKey);
+
+        var replayResponse = await PostCompletionAsync(
+            created.Id,
+            "release",
+            completionKey);
+
+        Assert.Equal(HttpStatusCode.OK, firstResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, replayResponse.StatusCode);
+        Assert.Equal(
+            "true",
+            Assert.Single(replayResponse.Headers.GetValues("Idempotency-Replayed")));
+        await AssertBalancesAsync(total: 100m, reserved: 0m, available: 100m);
+
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<DemoTradeLabDbContext>();
+        Assert.Single(context.ReservationCompletionRecords);
+        Assert.Equal(
+            1,
+            context.ReservationAuditEntries.Count(
+                entry => entry.EventType == ReservationAuditEventType.Released));
+    }
+
+    [Fact]
+    public async Task Completion_WithReusedKeyForDifferentOperation_ReturnsConflict()
+    {
+        var created = await CreateReservationAsync(80m);
+        const string completionKey = "completion-conflict-1";
+        var releaseResponse = await PostCompletionAsync(
+            created.Id,
+            "release",
+            completionKey);
+        Assert.Equal(HttpStatusCode.OK, releaseResponse.StatusCode);
+
+        var consumeResponse = await PostCompletionAsync(
+            created.Id,
+            "consume",
+            completionKey);
+
+        Assert.Equal(HttpStatusCode.Conflict, consumeResponse.StatusCode);
+        Assert.Equal(
+            "true",
+            Assert.Single(consumeResponse.Headers.GetValues("Idempotency-Replayed")));
+        await AssertBalancesAsync(total: 100m, reserved: 0m, available: 100m);
+    }
+
     private async Task<ReservationResponse> CreateReservationAsync(decimal amount)
     {
         var response = await PostCreateRequestAsync(
@@ -274,6 +333,19 @@ public sealed class ReservationsControllerTests : IAsyncLifetime
         {
             Content = JsonContent.Create(new CreateReservationRequest { Amount = amount })
         };
+        request.Headers.Add("Idempotency-Key", idempotencyKey);
+
+        return await _client.SendAsync(request);
+    }
+
+    private async Task<HttpResponseMessage> PostCompletionAsync(
+        Guid reservationId,
+        string operation,
+        string idempotencyKey)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"{ReservationUrl(reservationId)}/{operation}");
         request.Headers.Add("Idempotency-Key", idempotencyKey);
 
         return await _client.SendAsync(request);

@@ -1,4 +1,5 @@
 using DemoTradeLab.Core.DemoProfiles;
+using DemoTradeLab.Core.Orders;
 using DemoTradeLab.Core.Reservations;
 using DemoTradeLab.Core.Trades;
 using DemoTradeLab.Infrastructure.Concurrency;
@@ -32,6 +33,7 @@ public static class InfrastructureServiceCollectionExtensions
                         cancellationToken)));
 
         services.AddScoped<IDemoProfileRepository, EfDemoProfileRepository>();
+        services.AddScoped<IOrderRepository, EfOrderRepository>();
         services.AddScoped<IReservationRepository, EfReservationRepository>();
         services.AddScoped<ITradeRepository, EfTradeRepository>();
         services.AddSingleton<IAccountLockManager, LocalAccountLockManager>();

@@ -180,3 +180,21 @@
 - **Status:** Accepted
 - **Decision:** Replace the lock manager only inside the concurrency test host with a controlled implementation that signals first acquisition and second attempt. Run the remaining HTTP, service, transaction, EF Core, domain, and SQLite flow unchanged. Test the production lock separately for serialization, per-account independence, cancellation, and exception release.
 - **Reason:** `Task.Delay`-based race tests can pass or fail depending on machine timing. Explicit gates make the intended overlap deterministic, while the separate component tests prevent the controlled test double from being mistaken for proof of the production lock implementation.
+
+## ADR-031: Separate failure from compensation
+
+- **Status:** Accepted
+- **Decision:** Persist an order as `Failed` without automatically releasing its reservation. Expose compensation as a separate locked transaction that moves `Failed` to `Compensated` and releases funds.
+- **Reason:** A separate recovery command makes incomplete work observable, retryable, and reconcilable. Hiding compensation inside the failure transition would remove the important backend state where recovery itself can fail or be delayed.
+
+## ADR-032: Make target-state retries no-ops
+
+- **Status:** Accepted
+- **Decision:** Repeating order creation for the same reservation or repeating an order transition already at its target returns the stored resource without another balance mutation or event. Reservation release/consume additionally use durable completion idempotency keys.
+- **Reason:** Clients commonly retry after losing a response. A successful no-op is safer than duplicating state changes, while contradictory transitions still return an explicit business conflict.
+
+## ADR-033: Reconcile without automatic repair
+
+- **Status:** Accepted
+- **Decision:** Compare persisted reserved balance with active-reservation totals and report failed orders awaiting compensation, but do not modify either value automatically.
+- **Reason:** Detection and repair have different risk. Reporting a mismatch preserves evidence for debugging and requires an explicit future repair policy instead of guessing which record is authoritative.

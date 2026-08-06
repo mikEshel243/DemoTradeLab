@@ -66,6 +66,16 @@ internal sealed class EfReservationRepository(DemoTradeLabDbContext context)
                 record => record.DemoAccountId == accountId && record.Key == key,
                 cancellationToken);
 
+    public Task<ReservationCompletionRecord?> GetCompletionRecordAsync(
+        Guid accountId,
+        string key,
+        CancellationToken cancellationToken) =>
+        context.ReservationCompletionRecords
+            .AsNoTracking()
+            .SingleOrDefaultAsync(
+                record => record.DemoAccountId == accountId && record.Key == key,
+                cancellationToken);
+
     public async Task<IReservationTransaction> BeginTransactionAsync(
         CancellationToken cancellationToken)
     {
@@ -81,6 +91,11 @@ internal sealed class EfReservationRepository(DemoTradeLabDbContext context)
     public void Add(ReservationIdempotencyRecord idempotencyRecord)
     {
         context.ReservationIdempotencyRecords.Add(idempotencyRecord);
+    }
+
+    public void Add(ReservationCompletionRecord completionRecord)
+    {
+        context.ReservationCompletionRecords.Add(completionRecord);
     }
 
     public void Add(ReservationAuditEntry auditEntry)

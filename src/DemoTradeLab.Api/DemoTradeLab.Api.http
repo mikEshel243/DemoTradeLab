@@ -13,6 +13,7 @@ Accept: application/json
 # Copy an account ID from the response above before running these requests.
 @DemoAccountId = 00000000-0000-0000-0000-000000000000
 @ReservationId = 00000000-0000-0000-0000-000000000000
+@OrderId = 00000000-0000-0000-0000-000000000000
 @IdempotencyKey = replace-with-a-unique-value
 
 GET {{DemoTradeLab.Api_HostAddress}}/api/demo-accounts/{{DemoAccountId}}/reservations
@@ -36,10 +37,48 @@ Accept: application/json
 ###
 
 POST {{DemoTradeLab.Api_HostAddress}}/api/demo-accounts/{{DemoAccountId}}/reservations/{{ReservationId}}/release
+Idempotency-Key: release-{{IdempotencyKey}}
 
 ###
 
 POST {{DemoTradeLab.Api_HostAddress}}/api/demo-accounts/{{DemoAccountId}}/reservations/{{ReservationId}}/consume
+Idempotency-Key: consume-{{IdempotencyKey}}
+
+###
+
+POST {{DemoTradeLab.Api_HostAddress}}/api/demo-accounts/{{DemoAccountId}}/orders
+Content-Type: application/json
+
+{
+  "reservationId": "{{ReservationId}}"
+}
+
+###
+
+GET {{DemoTradeLab.Api_HostAddress}}/api/demo-accounts/{{DemoAccountId}}/orders/{{OrderId}}
+Accept: application/json
+
+###
+
+POST {{DemoTradeLab.Api_HostAddress}}/api/demo-accounts/{{DemoAccountId}}/orders/{{OrderId}}/complete
+
+###
+
+POST {{DemoTradeLab.Api_HostAddress}}/api/demo-accounts/{{DemoAccountId}}/orders/{{OrderId}}/fail
+
+###
+
+POST {{DemoTradeLab.Api_HostAddress}}/api/demo-accounts/{{DemoAccountId}}/orders/{{OrderId}}/compensate
+
+###
+
+GET {{DemoTradeLab.Api_HostAddress}}/api/demo-accounts/{{DemoAccountId}}/orders/{{OrderId}}/events
+Accept: application/json
+
+###
+
+GET {{DemoTradeLab.Api_HostAddress}}/api/demo-accounts/{{DemoAccountId}}/orders/reconciliation
+Accept: application/json
 
 ###
 

@@ -1,6 +1,6 @@
 # DemoTradeLab
 
-DemoTradeLab is a portfolio and interview-preparation project for learning C# and ASP.NET Core through an educational demo-trading analytics application and, in a later milestone, a backend reliability simulator.
+DemoTradeLab is a portfolio and interview-preparation project for learning C# and ASP.NET Core through an educational demo-trading analytics application and backend reliability simulator.
 
 This is an unofficial educational project. It is not affiliated with, endorsed by, or connected to Plus500 or any other financial institution. It never connects to real trading accounts, accepts brokerage credentials, submits real orders, or provides automated trading recommendations.
 
@@ -32,9 +32,11 @@ The repository foundation, trade CRUD backend, analytics API, React dashboard, a
 - SQLite-persisted account balances that are not reset by later configuration initialization
 - `GET /api/demo-profiles` with total, reserved, and calculated available balances
 
-Milestones 5A through 5C now provide the reservation lifecycle, per-account locking, explicit transactions, durable idempotency/audit records, and deterministic concurrent-request verification. Recovery and completion idempotency remain planned for Milestone 5D. Importing is no longer a roadmap milestone.
+Milestones 0-6 are complete: reservation and order lifecycles, per-account locking, explicit transactions, durable idempotency/audit records, deterministic concurrency verification, compensation, reconciliation, rollback/retry scenarios, and the final learning and interview guides are implemented. Importing is no longer a roadmap milestone.
 
-## Planned lock-based concurrency lesson
+![DemoTradeLab dashboard with fictional seed data](docs/images/dashboard.png)
+
+## Lock-based concurrency lesson
 
 Milestone 5 demonstrates an educational balance-reservation scenario in which two concurrent requests try to reserve the same account funds. Milestone 5B protects account state transitions with one local asynchronous lock per account and stores the balance change, reservation, idempotency outcome, and audit event in one explicit transaction. Milestone 5C deterministically proves that two requests for `80` against `100` produce one success, one rejection, and a final available balance of `20`.
 
@@ -130,7 +132,33 @@ A creation amount that exceeds available balance returns HTTP 409 without changi
 
 `Idempotency-Key` is an opaque, case-sensitive value of at most 100 characters. Retrying the same account, key, and amount returns the original outcome and adds `Idempotency-Replayed: true`. Reusing the key with a different amount returns HTTP 409. Both successful creation and insufficient-funds rejection are durable, so retry behavior survives an application restart.
 
-See [Backend learning guide](docs/BACKEND_LEARNING_GUIDE.md) for debugger-oriented tests and flow explanations.
+Release and consume requests also require an `Idempotency-Key`. Retrying the same reservation and operation replays success. Reusing that key for another reservation or completion operation returns HTTP 409.
+
+## Order recovery API
+
+An order is created from one active reservation and follows one explicit path:
+
+```text
+Pending -> Completed
+Pending -> Failed -> Compensated
+```
+
+Completing consumes reserved funds. Marking an order failed intentionally leaves the reservation active, representing recovery work that is still required. Compensation later releases the reservation. Repeating a transition that already reached its target state is a successful no-op; contradictory transitions return HTTP 409.
+
+| Method | Route | Result |
+| --- | --- | --- |
+| `GET` | `/api/demo-accounts/{accountId}/orders` | Lists account orders |
+| `GET` | `/api/demo-accounts/{accountId}/orders/{orderId}` | Returns one order |
+| `POST` | `/api/demo-accounts/{accountId}/orders` | Creates or replays an order for a reservation |
+| `POST` | `/api/demo-accounts/{accountId}/orders/{orderId}/complete` | Consumes the reservation and completes the order |
+| `POST` | `/api/demo-accounts/{accountId}/orders/{orderId}/fail` | Records the simulated later failure |
+| `POST` | `/api/demo-accounts/{accountId}/orders/{orderId}/compensate` | Releases funds for a failed order |
+| `GET` | `/api/demo-accounts/{accountId}/orders/{orderId}/events` | Returns durable order history |
+| `GET` | `/api/demo-accounts/{accountId}/orders/reconciliation` | Compares reserved balance with active reservations and reports failed orders |
+
+The rollback integration test installs a temporary SQLite trigger that rejects a completion event. The endpoint returns HTTP 500, the transaction rolls back, and a later retry succeeds after the trigger is removed. This is separate from HTTP 409, which represents an expected business rejection and not a technical failure.
+
+See the [testing and debugging guide](docs/TESTING_GUIDE.md) for the recommended test order, breakpoint locations, focused commands, and end-to-end flows.
 
 ## Trade API
 
@@ -224,4 +252,12 @@ DemoTradeLab/
 `-- DemoTradeLab.sln
 ```
 
-See [Architecture](docs/ARCHITECTURE.md), [Decisions](docs/DECISIONS.md), and [Roadmap](docs/ROADMAP.md) for more detail.
+Learning and portfolio documentation:
+
+- [Testing and debugging guide](docs/TESTING_GUIDE.md)
+- [Backend learning guide](docs/BACKEND_LEARNING_GUIDE.md)
+- [Architecture diagram](docs/ARCHITECTURE_DIAGRAM.md)
+- [Detailed architecture](docs/ARCHITECTURE.md)
+- [Architectural decisions](docs/DECISIONS.md)
+- [Interview demonstration](docs/INTERVIEW_DEMO.md)
+- [Roadmap](docs/ROADMAP.md)

@@ -93,10 +93,12 @@ public sealed class ReservationsController(
     public Task<ActionResult<ReservationResponse>> ReleaseAsync(
         Guid accountId,
         Guid reservationId,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
         CancellationToken cancellationToken) =>
         CompleteAsync(
             accountId,
             reservationId,
+            idempotencyKey,
             "released",
             service.ReleaseAsync,
             cancellationToken);
@@ -108,10 +110,12 @@ public sealed class ReservationsController(
     public Task<ActionResult<ReservationResponse>> ConsumeAsync(
         Guid accountId,
         Guid reservationId,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
         CancellationToken cancellationToken) =>
         CompleteAsync(
             accountId,
             reservationId,
+            idempotencyKey,
             "consumed",
             service.ConsumeAsync,
             cancellationToken);
@@ -119,11 +123,21 @@ public sealed class ReservationsController(
     private async Task<ActionResult<ReservationResponse>> CompleteAsync(
         Guid accountId,
         Guid reservationId,
+        string? idempotencyKey,
         string operation,
-        Func<Guid, Guid, CancellationToken, Task<ReservationOperationResult>> complete,
+        Func<Guid, Guid, string?, CancellationToken, Task<ReservationOperationResult>> complete,
         CancellationToken cancellationToken)
     {
-        var result = await complete(accountId, reservationId, cancellationToken);
+        var result = await complete(
+            accountId,
+            reservationId,
+            idempotencyKey,
+            cancellationToken);
+
+        if (result.IsReplay)
+        {
+            Response.Headers[IdempotencyReplayHeaderName] = "true";
+        }
 
         if (!result.IsSuccess)
         {
@@ -131,10 +145,11 @@ public sealed class ReservationsController(
         }
 
         logger.LogInformation(
-            "Reservation {ReservationId} for account {AccountId} was {Operation}",
+            "Reservation {ReservationId} for account {AccountId} was {Operation}; replay: {IsReplay}",
             reservationId,
             accountId,
-            operation);
+            operation,
+            result.IsReplay);
 
         return Ok(result.Reservation.ToResponse());
     }

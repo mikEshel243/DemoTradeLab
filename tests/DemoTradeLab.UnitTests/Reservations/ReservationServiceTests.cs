@@ -222,6 +222,8 @@ public sealed class ReservationServiceTests
 
         public List<ReservationAuditEntry> AuditEntries { get; } = [];
 
+        public List<ReservationCompletionRecord> CompletionRecords { get; } = [];
+
         public int BeginTransactionCalls { get; private set; }
 
         public int CommitCalls { get; private set; }
@@ -267,6 +269,13 @@ public sealed class ReservationServiceTests
             Task.FromResult(IdempotencyRecords.SingleOrDefault(
                 record => record.DemoAccountId == accountId && record.Key == key));
 
+        public Task<ReservationCompletionRecord?> GetCompletionRecordAsync(
+            Guid accountId,
+            string key,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(CompletionRecords.SingleOrDefault(
+                record => record.DemoAccountId == accountId && record.Key == key));
+
         public Task<IReservationTransaction> BeginTransactionAsync(
             CancellationToken cancellationToken)
         {
@@ -283,6 +292,11 @@ public sealed class ReservationServiceTests
         public void Add(ReservationIdempotencyRecord idempotencyRecord)
         {
             IdempotencyRecords.Add(idempotencyRecord);
+        }
+
+        public void Add(ReservationCompletionRecord completionRecord)
+        {
+            CompletionRecords.Add(completionRecord);
         }
 
         public void Add(ReservationAuditEntry auditEntry)

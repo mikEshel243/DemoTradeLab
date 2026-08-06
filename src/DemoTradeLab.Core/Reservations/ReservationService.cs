@@ -114,10 +114,14 @@ public sealed class ReservationService(
     public Task<ReservationOperationResult> ReleaseAsync(
         Guid accountId,
         Guid reservationId,
+        string? idempotencyKey,
         CancellationToken cancellationToken) =>
         CompleteAsync(
             accountId,
             reservationId,
+            idempotencyKey,
+            ReservationCompletionOperation.Release,
+            ReservationStatus.Released,
             ReservationAuditEventType.Released,
             static (reservation, account, completedAtUtc) =>
                 reservation.Release(account, completedAtUtc),
@@ -126,10 +130,14 @@ public sealed class ReservationService(
     public Task<ReservationOperationResult> ConsumeAsync(
         Guid accountId,
         Guid reservationId,
+        string? idempotencyKey,
         CancellationToken cancellationToken) =>
         CompleteAsync(
             accountId,
             reservationId,
+            idempotencyKey,
+            ReservationCompletionOperation.Consume,
+            ReservationStatus.Consumed,
             ReservationAuditEventType.Consumed,
             static (reservation, account, completedAtUtc) =>
                 reservation.Consume(account, completedAtUtc),
@@ -188,16 +196,40 @@ public sealed class ReservationService(
     private async Task<ReservationOperationResult> CompleteAsync(
         Guid accountId,
         Guid reservationId,
+        string? idempotencyKey,
+        ReservationCompletionOperation operation,
+        ReservationStatus completedStatus,
         ReservationAuditEventType auditEventType,
         Func<DemoReservation, DemoAccount, DateTimeOffset,
             ReservationOperationResult> complete,
         CancellationToken cancellationToken)
     {
+        var normalizedKey = idempotencyKey?.Trim() ?? string.Empty;
+        var keyError = ValidateIdempotencyKey(normalizedKey);
+
+        if (keyError is not null)
+        {
+            return ReservationOperationResult.Failure(keyError);
+        }
+
         await using var accountLock = await lockManager.AcquireAsync(
             accountId,
             cancellationToken);
         await using var transaction = await repository.BeginTransactionAsync(
             cancellationToken);
+
+        var replay = await TryReplayCompletionAsync(
+            accountId,
+            reservationId,
+            normalizedKey,
+            operation,
+            cancellationToken);
+
+        if (replay is not null)
+        {
+            await transaction.CommitAsync(cancellationToken);
+            return replay;
+        }
 
         var reservation = await repository.GetByIdForUpdateAsync(
             accountId,
@@ -212,6 +244,22 @@ public sealed class ReservationService(
                 $"Reservation '{reservationId}' was not found for account '{accountId}'."));
         }
 
+        var occurredAtUtc = UtcNow();
+
+        if (reservation.Status == completedStatus)
+        {
+            repository.Add(ReservationCompletionRecord.Create(
+                accountId,
+                reservationId,
+                normalizedKey,
+                operation,
+                occurredAtUtc));
+            await repository.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            return ReservationOperationResult.Success(reservation);
+        }
+
         var account = await repository.GetAccountForUpdateAsync(
             accountId,
             cancellationToken);
@@ -221,7 +269,6 @@ public sealed class ReservationService(
             return AccountNotFound(accountId);
         }
 
-        var occurredAtUtc = UtcNow();
         var result = complete(reservation, account, occurredAtUtc);
 
         if (!result.IsSuccess)
@@ -229,6 +276,12 @@ public sealed class ReservationService(
             return result;
         }
 
+        repository.Add(ReservationCompletionRecord.Create(
+            accountId,
+            reservationId,
+            normalizedKey,
+            operation,
+            occurredAtUtc));
         repository.Add(ReservationAuditEntry.Create(
             accountId,
             reservationId,
@@ -239,6 +292,42 @@ public sealed class ReservationService(
         await transaction.CommitAsync(cancellationToken);
 
         return result;
+    }
+
+    private async Task<ReservationOperationResult?> TryReplayCompletionAsync(
+        Guid accountId,
+        Guid reservationId,
+        string idempotencyKey,
+        ReservationCompletionOperation operation,
+        CancellationToken cancellationToken)
+    {
+        var record = await repository.GetCompletionRecordAsync(
+            accountId,
+            idempotencyKey,
+            cancellationToken);
+
+        if (record is null)
+        {
+            return null;
+        }
+
+        if (record.ReservationId != reservationId || record.Operation != operation)
+        {
+            return ReservationOperationResult.Failure(new ReservationError(
+                nameof(idempotencyKey),
+                ReservationErrorCode.IdempotencyConflict,
+                "The idempotency key was already used for a different completion operation."))
+                .AsReplay();
+        }
+
+        var reservation = await repository.GetByIdAsync(
+            accountId,
+            reservationId,
+            cancellationToken)
+            ?? throw new InvalidOperationException(
+                $"Reservation '{reservationId}' referenced by completion record '{record.Id}' was not found.");
+
+        return ReservationOperationResult.Success(reservation).AsReplay();
     }
 
     private DateTimeOffset UtcNow() => timeProvider.GetUtcNow();

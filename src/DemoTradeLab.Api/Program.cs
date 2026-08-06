@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using DemoTradeLab.Api.Configuration;
 using DemoTradeLab.Core.Analytics;
 using DemoTradeLab.Core.DemoProfiles;
+using DemoTradeLab.Core.Orders;
 using DemoTradeLab.Core.Reservations;
 using DemoTradeLab.Core.Trades;
 using DemoTradeLab.Infrastructure;
@@ -44,6 +45,14 @@ builder.Services
             new JsonStringEnumConverter<ReservationStatus>(
                 JsonNamingPolicy.CamelCase,
                 allowIntegerValues: false));
+        options.JsonSerializerOptions.Converters.Add(
+            new JsonStringEnumConverter<OrderStatus>(
+                JsonNamingPolicy.CamelCase,
+                allowIntegerValues: false));
+        options.JsonSerializerOptions.Converters.Add(
+            new JsonStringEnumConverter<OrderEventType>(
+                JsonNamingPolicy.CamelCase,
+                allowIntegerValues: false));
     });
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
@@ -53,6 +62,7 @@ builder.Services.AddInfrastructure(
     demoEnvironment.ToSeedDefinitions());
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<DemoProfileService>();
+builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<ReservationService>();
 builder.Services.AddScoped<TradeService>();
 builder.Services.AddScoped<TradeAnalyticsService>();

@@ -61,7 +61,7 @@ Status: Complete
 
 ## Milestone 5 - Reliability simulator
 
-Status: In progress
+Status: Complete
 
 This milestone is a separate educational module. Its primary concurrency example will use locking; optimistic concurrency may be compared as an alternative but will not silently replace the lock-based lesson.
 
@@ -106,10 +106,16 @@ Status: Complete
 
 ### 5D - Reservation completion and recovery
 
-- Add idempotent consume and release operations
-- Demonstrate release or compensation after a later operation fails
-- Add an explicit order state machine and distinguish technical failure from business rejection
-- Add retry-safety, audit-history, reconciliation, and simulated failure scenarios
+Status: Complete
+
+- [x] Add durable idempotency records to consume and release operations
+- [x] Demonstrate separate failure and compensation transitions that release funds
+- [x] Add the explicit order states `Pending`, `Completed`, `Failed`, and `Compensated`
+- [x] Distinguish HTTP 409 business rejection from HTTP 500 technical failure and transaction rollback
+- [x] Make order creation and terminal target-state retries safe no-ops
+- [x] Persist and expose order event history
+- [x] Add reconciliation for active reservations, reserved balance, and failed orders
+- [x] Simulate a SQLite write failure, prove rollback, remove the failure, and retry successfully
 
 ### SQLite and multi-instance boundary
 
@@ -119,13 +125,16 @@ Status: Complete
 - Do not claim multi-instance safety until a provider-specific database-locking strategy is implemented and tested
 - A future multi-instance exercise may use a server database with genuine row locking, but no new external infrastructure is part of the current MVP
 
-Readiness for 5D: creation concurrency and retry behavior are now deterministic and verified. Add idempotency to release/consume, then introduce recovery, compensation, and order-state scenarios without weakening the proven single-account critical section.
+Milestone 5 is complete for the documented single-process SQLite boundary. Multi-instance coordination remains explicitly out of scope and must not be inferred from the local lock tests.
 
 ## Milestone 6 - Final polish
 
-Status: Planned
+Status: Complete
 
-- Documentation and screenshots
-- Architecture diagram
-- Test-coverage improvements
-- Interview demonstration script
+- [x] Add a portfolio screenshot generated from a temporary database containing only fictional seed data
+- [x] Add a visual architecture, atomic-operation, and state-machine diagram
+- [x] Add a test and debugging guide organized by backend concept and execution flow
+- [x] Expand coverage for idempotency, deterministic concurrency, recovery, reconciliation, and rollback/retry
+- [x] Add a focused interview demonstration script
+
+All planned educational milestones are complete. Future work should begin as a separately scoped learning exercise rather than silently extending the current roadmap.

@@ -237,7 +237,7 @@ Acquire the lock for one account
 Release the lock through an async-disposable lease
 ```
 
-The lock is released by `await using`/`DisposeAsync` even when cancellation or an exception occurs. External calls, notifications, artificial sleeps, and long calculations do not belong inside the critical section. Consume and release already use locked transactions, but making their retries idempotent remains Milestone 5D work.
+The lock is released by `await using`/`DisposeAsync` even when cancellation or an exception occurs. External calls, notifications, artificial sleeps, and long calculations do not belong inside the critical section. Consume and release use locked transactions and durable completion idempotency records.
 
 ### Verified concurrent request sequence
 
@@ -276,6 +276,30 @@ The expected final state is total `100`, reserved `80`, and available `20`. A re
 - Multiple application instances each have a different in-memory lock manager. Therefore the first educational implementation is correct only for the documented single-instance mode.
 - A production-style multi-instance variant requires a provider that supports genuine row locks or another explicitly designed distributed coordination mechanism, plus cross-instance tests.
 
+## Order recovery and reconciliation
+
+The reliability simulator now has authoritative account, reservation, order, idempotency, audit, transaction, single-process locking, deterministic concurrency, recovery, and reconciliation foundations.
+
+### Order recovery flow
+
+```text
+active reservation -> create Pending order
+    |                       |
+    | complete              | simulated later failure
+    v                       v
+Consumed + Completed     Active reservation + Failed order
+                            |
+                            | compensate
+                            v
+                         Released + Compensated
+```
+
+Failure and compensation are separate transactions. A failed order therefore remains observable and appears in reconciliation until compensation succeeds. `DemoOrderEvents` preserves every committed state change. Repeating a transition already at its target is a no-op and does not add duplicate events.
+
+Reconciliation runs under the same per-account lock and a database transaction. It compares `DemoAccount.ReservedBalance` with the sum of active reservations and counts failed orders awaiting compensation. It reports inconsistency rather than silently modifying data.
+
+The technical rollback test uses a temporary SQLite trigger to fail the order-event insert after domain objects have changed in request memory. Because account, reservation, order, and event persistence share one transaction, none of those changes commit. A new request reloads the original state and can retry after the trigger is removed.
+
 ## Deferred design
 
-The reliability simulator now has authoritative account, reservation, idempotency, audit, transaction, single-process locking, and deterministic concurrency-test foundations. Idempotent completion and recovery/order scenarios remain Milestone 5D work.
+Multi-instance coordination is deferred. The current `SemaphoreSlim` lock remains intentionally process-local; a server database row-locking strategy or explicit distributed coordinator would require separate architecture and cross-instance tests.
