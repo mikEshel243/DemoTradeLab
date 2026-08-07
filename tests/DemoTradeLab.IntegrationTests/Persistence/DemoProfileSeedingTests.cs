@@ -9,6 +9,9 @@ namespace DemoTradeLab.IntegrationTests.Persistence;
 
 public sealed class DemoProfileSeedingTests
 {
+    /// <summary>
+    /// Repeats profile initialization and verifies that missing records are added without resetting persisted account balances.
+    /// </summary>
     [Fact]
     public async Task MigrateAsync_SeedsProfilesOnceAndPreservesPersistedBalances()
     {

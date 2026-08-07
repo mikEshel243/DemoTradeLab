@@ -7,6 +7,9 @@ namespace DemoTradeLab.IntegrationTests.Persistence;
 
 public sealed class TradePersistenceTests
 {
+    /// <summary>
+    /// Applies migrations, saves a trade, clears EF tracking, and verifies that the mapped entity reloads from SQLite.
+    /// </summary>
     [Fact]
     public async Task Migration_CanPersistAndReloadTrade()
     {

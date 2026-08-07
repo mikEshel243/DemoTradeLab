@@ -14,6 +14,9 @@ public sealed class DemoReservationTests
         0,
         TimeSpan.Zero);
 
+    /// <summary>
+    /// Reserves an affordable amount and verifies creation of an active reservation and the matching balance change.
+    /// </summary>
     [Fact]
     public void Create_WithAvailableFunds_ReservesBalanceAndCreatesActiveReservation()
     {
@@ -30,6 +33,9 @@ public sealed class DemoReservationTests
         Assert.Equal(20m, account.AvailableBalance);
     }
 
+    /// <summary>
+    /// Requests more than the available balance and verifies an expected rejection with no account mutation.
+    /// </summary>
     [Fact]
     public void Create_WithInsufficientFunds_ReturnsRejectionWithoutChangingBalance()
     {
@@ -44,6 +50,9 @@ public sealed class DemoReservationTests
         Assert.Equal(100m, account.AvailableBalance);
     }
 
+    /// <summary>
+    /// Supplies an invalid amount and timestamp and verifies that all validation problems are reported together.
+    /// </summary>
     [Fact]
     public void Create_WithInvalidAmountAndTimestamp_ReturnsAllValidationErrors()
     {
@@ -58,6 +67,9 @@ public sealed class DemoReservationTests
         Assert.Equal(0m, account.ReservedBalance);
     }
 
+    /// <summary>
+    /// Releases an active reservation and verifies that reserved funds become available without changing total balance.
+    /// </summary>
     [Fact]
     public void Release_ActiveReservation_RestoresAvailableBalance()
     {
@@ -75,6 +87,9 @@ public sealed class DemoReservationTests
         Assert.Equal(100m, account.AvailableBalance);
     }
 
+    /// <summary>
+    /// Consumes an active reservation and verifies equal reductions to total and reserved balances.
+    /// </summary>
     [Fact]
     public void Consume_ActiveReservation_ReducesTotalAndReservedBalances()
     {
@@ -90,6 +105,9 @@ public sealed class DemoReservationTests
         Assert.Equal(20m, account.AvailableBalance);
     }
 
+    /// <summary>
+    /// Attempts to release a terminal reservation and verifies a rejection without a second balance change.
+    /// </summary>
     [Fact]
     public void Release_CompletedReservation_ReturnsRejectionWithoutChangingBalance()
     {
@@ -105,6 +123,9 @@ public sealed class DemoReservationTests
         Assert.Equal(0m, account.ReservedBalance);
     }
 
+    /// <summary>
+    /// Uses an account other than the reservation owner and verifies rejection without mutating either account.
+    /// </summary>
     [Fact]
     public void Release_WithDifferentAccount_ReturnsRejectionWithoutChangingEitherAccount()
     {
@@ -120,6 +141,9 @@ public sealed class DemoReservationTests
         Assert.Equal(ReservationStatus.Active, reservation.Status);
     }
 
+    /// <summary>
+    /// Attempts completion before the reservation creation time and verifies rejection without changing persisted state values.
+    /// </summary>
     [Fact]
     public void Consume_WithTimestampBeforeCreation_ReturnsRejectionWithoutChangingState()
     {

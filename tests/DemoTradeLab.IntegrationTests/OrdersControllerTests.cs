@@ -52,6 +52,9 @@ public sealed class OrdersControllerTests : IAsyncLifetime
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Creates and completes an order through HTTP, then verifies consumed funds, durable events, and retry-safe completion.
+    /// </summary>
     [Fact]
     public async Task CreateAndCompleteOrder_ConsumesFundsAndIsRetrySafe()
     {
@@ -90,6 +93,9 @@ public sealed class OrdersControllerTests : IAsyncLifetime
             events.Select(orderEvent => orderEvent.EventType));
     }
 
+    /// <summary>
+    /// Fails, reconciles, and compensates an order, verifying that recovery work is visible before funds are released.
+    /// </summary>
     [Fact]
     public async Task FailThenCompensate_ReleasesFundsAndClearsRecoveryWork()
     {
@@ -134,6 +140,9 @@ public sealed class OrdersControllerTests : IAsyncLifetime
             events.Select(orderEvent => orderEvent.EventType));
     }
 
+    /// <summary>
+    /// Attempts to complete a failed order and verifies HTTP 409 with unchanged order, reservation, and account state.
+    /// </summary>
     [Fact]
     public async Task Complete_FailedOrder_ReturnsConflictWithoutChangingFunds()
     {
@@ -155,6 +164,9 @@ public sealed class OrdersControllerTests : IAsyncLifetime
         Assert.True(report.IsBalanceConsistent);
     }
 
+    /// <summary>
+    /// Corrupts the stored reserved balance in the isolated database and verifies that reconciliation detects the mismatch.
+    /// </summary>
     [Fact]
     public async Task Reconciliation_WhenPersistedBalanceIsCorrupted_ReportsMismatch()
     {
@@ -174,6 +186,9 @@ public sealed class OrdersControllerTests : IAsyncLifetime
         Assert.Equal(80m, report.ActiveReservationTotal);
     }
 
+    /// <summary>
+    /// Forces a SQLite write failure and verifies HTTP 500, full rollback, no partial events, and a successful later retry.
+    /// </summary>
     [Fact]
     public async Task Complete_WhenDatabaseWriteFails_RollsBackAndCanBeRetried()
     {

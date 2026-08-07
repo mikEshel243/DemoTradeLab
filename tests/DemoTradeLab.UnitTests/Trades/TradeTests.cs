@@ -4,6 +4,9 @@ namespace DemoTradeLab.UnitTests.Trades;
 
 public sealed class TradeTests
 {
+    /// <summary>
+    /// Creates a trade from valid input and verifies that its text fields are normalized into a valid domain entity.
+    /// </summary>
     [Fact]
     public void Create_WithValidDraft_CreatesNormalizedTrade()
     {
@@ -26,6 +29,9 @@ public sealed class TradeTests
         Assert.Equal(-25.40m, trade.RealizedProfitLoss);
     }
 
+    /// <summary>
+    /// Supplies missing text and unsupported enum values and verifies that all corresponding validation errors are returned.
+    /// </summary>
     [Fact]
     public void Create_WithMissingTextAndUnknownEnums_ReturnsValidationErrors()
     {
@@ -47,6 +53,9 @@ public sealed class TradeTests
         AssertHasError(result, nameof(TradeDraft.Source), TradeValidationCode.InvalidValue);
     }
 
+    /// <summary>
+    /// Supplies invalid prices, quantity, and monetary values and verifies that financial validation reports every error.
+    /// </summary>
     [Fact]
     public void Create_WithInvalidFinancialValues_ReturnsAllValidationErrors()
     {
@@ -69,6 +78,9 @@ public sealed class TradeTests
         AssertHasError(result, nameof(TradeDraft.FinancingCosts), TradeValidationCode.InvalidValue);
     }
 
+    /// <summary>
+    /// Uses non-UTC timestamps and verifies that the domain rejects them instead of silently converting their time zones.
+    /// </summary>
     [Fact]
     public void Create_WithNonUtcTimestamps_ReturnsValidationErrors()
     {
@@ -86,6 +98,9 @@ public sealed class TradeTests
         AssertHasError(result, nameof(TradeDraft.ClosedAtUtc), TradeValidationCode.MustBeUtc);
     }
 
+    /// <summary>
+    /// Uses a closing time that is not later than the opening time and verifies that the invalid interval is rejected.
+    /// </summary>
     [Fact]
     public void Create_WhenClosingTimeIsNotAfterOpeningTime_ReturnsValidationError()
     {
@@ -100,6 +115,9 @@ public sealed class TradeTests
         AssertHasError(result, nameof(TradeDraft.ClosedAtUtc), TradeValidationCode.InvalidTimeRange);
     }
 
+    /// <summary>
+    /// Marks a trade as imported without an import timestamp and verifies that its required provenance is enforced.
+    /// </summary>
     [Fact]
     public void Create_WhenImportedTradeHasNoImportTimestamp_ReturnsValidationError()
     {
@@ -115,6 +133,9 @@ public sealed class TradeTests
         AssertHasError(result, nameof(TradeDraft.ImportedAtUtc), TradeValidationCode.Required);
     }
 
+    /// <summary>
+    /// Creates a valid imported trade and verifies that its source and import timestamp are retained.
+    /// </summary>
     [Fact]
     public void Create_WithValidImportedTrade_CreatesTrade()
     {
@@ -131,6 +152,9 @@ public sealed class TradeTests
         Assert.Equal(draft.ImportedAtUtc, trade.ImportedAtUtc);
     }
 
+    /// <summary>
+    /// Updates a trade with valid values and verifies that editable data changes while identity remains stable.
+    /// </summary>
     [Fact]
     public void Update_WithValidDraft_ChangesValuesAndPreservesIdentity()
     {
@@ -158,6 +182,9 @@ public sealed class TradeTests
         Assert.Equal(40m, trade.RealizedProfitLoss);
     }
 
+    /// <summary>
+    /// Attempts an invalid update and verifies that errors are returned without partially mutating the existing trade.
+    /// </summary>
     [Fact]
     public void Update_WithInvalidDraft_ReturnsErrorsWithoutChangingTrade()
     {

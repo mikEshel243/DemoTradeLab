@@ -43,6 +43,15 @@ Expected results are `No changes have been made to the model since the last migr
 
 If tests do not appear, build the solution once and reload the VS Code window. The C# tooling discovers xUnit tests from the two test projects in the solution.
 
+### How each test documents itself
+
+Every `[Fact]` follows two complementary documentation rules:
+
+- Its method name uses the `Operation_Scenario_ExpectedResult` pattern, so the test list explains what behavior passed or failed.
+- Its XML `<summary>` briefly explains the scenario and the behavior or invariant that the test proves. Hover over the test method in VS Code to read it.
+
+The test body then provides the executable detail through its setup, action, and assertions. Comments are added inside a test only when they explain a non-obvious coordination or failure mechanism; repeating every code line in prose would create documentation that is noisy and easy to leave outdated.
+
 ## 3. Run one test or one category
 
 List every discovered test:

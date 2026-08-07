@@ -5,6 +5,9 @@ namespace DemoTradeLab.UnitTests.Analytics;
 
 public sealed class TradeAnalyticsCalculatorTests
 {
+    /// <summary>
+    /// Calculates a dashboard with no trades and verifies meaningful zero counts and empty grouped statistics.
+    /// </summary>
     [Fact]
     public void CalculateDashboard_WithNoTrades_ReturnsEmptyStatistics()
     {
@@ -19,6 +22,9 @@ public sealed class TradeAnalyticsCalculatorTests
         Assert.Empty(TradeAnalyticsCalculator.CalculateProfitLossTimeline([]));
     }
 
+    /// <summary>
+    /// Classifies profitable, losing, and break-even trades while verifying that monetary totals stay separated by currency.
+    /// </summary>
     [Fact]
     public void CalculateDashboard_ClassifiesOutcomesAndSeparatesCurrencies()
     {
@@ -53,6 +59,9 @@ public sealed class TradeAnalyticsCalculatorTests
         Assert.Equal(-4m, usd.WorstTrade.RealizedProfitLoss);
     }
 
+    /// <summary>
+    /// Gives two instruments equal activity and verifies that the deterministic alphabetical tie-break is applied.
+    /// </summary>
     [Fact]
     public void CalculateDashboard_WhenInstrumentCountsTie_UsesAlphabeticalTieBreak()
     {
@@ -67,6 +76,9 @@ public sealed class TradeAnalyticsCalculatorTests
         Assert.Equal("AAPL", dashboard.MostActiveInstrument);
     }
 
+    /// <summary>
+    /// Groups instrument names without case sensitivity while verifying that different currencies remain separate groups.
+    /// </summary>
     [Fact]
     public void CalculateInstrumentSummaries_GroupsCaseInsensitivelyButKeepsCurrenciesSeparate()
     {
@@ -92,6 +104,9 @@ public sealed class TradeAnalyticsCalculatorTests
         Assert.Equal(3m, euro.TotalRealizedProfitLoss);
     }
 
+    /// <summary>
+    /// Builds a timeline from out-of-order trades and verifies chronological ordering and cumulative profit/loss values.
+    /// </summary>
     [Fact]
     public void CalculateProfitLossTimeline_OrdersByClosingTimeAndBuildsCumulativeValue()
     {

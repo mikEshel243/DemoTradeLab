@@ -4,6 +4,9 @@ namespace DemoTradeLab.UnitTests.DemoProfiles;
 
 public sealed class DemoProfileTests
 {
+    /// <summary>
+    /// Creates a profile and account from valid drafts and verifies normalization of their keys and display values.
+    /// </summary>
     [Fact]
     public void CreateAndAddAccount_WithValidDrafts_NormalizesValues()
     {
@@ -29,6 +32,9 @@ public sealed class DemoProfileTests
         Assert.Equal(1_000m, account.AvailableBalance);
     }
 
+    /// <summary>
+    /// Supplies an invalid profile key and verifies that the domain returns a validation error instead of an entity.
+    /// </summary>
     [Fact]
     public void Create_WithInvalidKey_ReturnsValidationError()
     {
@@ -42,6 +48,9 @@ public sealed class DemoProfileTests
             error => error.PropertyName == nameof(DemoProfileDraft.Key));
     }
 
+    /// <summary>
+    /// Adds keys that normalize to the same value and verifies that duplicate accounts cannot enter one profile.
+    /// </summary>
     [Fact]
     public void AddAccount_WithDuplicateNormalizedKey_ReturnsValidationError()
     {
@@ -63,6 +72,9 @@ public sealed class DemoProfileTests
         Assert.Single(profile.Accounts);
     }
 
+    /// <summary>
+    /// Attempts to add an account with a non-positive initial balance and verifies that the balance invariant is enforced.
+    /// </summary>
     [Fact]
     public void AddAccount_WithNonPositiveBalance_ReturnsValidationError()
     {

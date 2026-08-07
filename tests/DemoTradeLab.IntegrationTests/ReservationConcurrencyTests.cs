@@ -62,6 +62,9 @@ public sealed class ReservationConcurrencyTests : IAsyncLifetime
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Overlaps two reservations of 80 against 100 and verifies exactly one success, one rejection, and a final available 20.
+    /// </summary>
     [Fact]
     public async Task ConcurrentReservations_OfEightyAgainstOneHundred_ProduceOneSuccess()
     {
@@ -93,6 +96,9 @@ public sealed class ReservationConcurrencyTests : IAsyncLifetime
             expectedRejectedOutcomes: 1);
     }
 
+    /// <summary>
+    /// Sends the same idempotency key concurrently and verifies one durable reservation and one replayed response.
+    /// </summary>
     [Fact]
     public async Task ConcurrentDuplicateKey_ReplaysOnePersistedReservation()
     {

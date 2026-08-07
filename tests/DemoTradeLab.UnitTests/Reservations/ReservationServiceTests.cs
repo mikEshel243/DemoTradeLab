@@ -14,6 +14,9 @@ public sealed class ReservationServiceTests
         0,
         TimeSpan.Zero);
 
+    /// <summary>
+    /// Creates a reservation and verifies that reservation, idempotency, audit, balance, save, and commit form one operation.
+    /// </summary>
     [Fact]
     public async Task CreateAsync_WithExistingAccount_PersistsAtomicOperationRecords()
     {
@@ -43,6 +46,9 @@ public sealed class ReservationServiceTests
         Assert.Equal(account.Id, Assert.Single(lockManager.AcquiredAccountIds));
     }
 
+    /// <summary>
+    /// Repeats a successful request with the same key and verifies replay without another save or balance reservation.
+    /// </summary>
     [Fact]
     public async Task CreateAsync_WithSameKey_ReplaysOriginalSuccessWithoutSavingAgain()
     {
@@ -71,6 +77,9 @@ public sealed class ReservationServiceTests
         Assert.Equal(2, repository.CommitCalls);
     }
 
+    /// <summary>
+    /// Reuses an idempotency key with another amount and verifies a conflict without executing a new operation.
+    /// </summary>
     [Fact]
     public async Task CreateAsync_WithReusedKeyAndDifferentAmount_ReturnsConflict()
     {
@@ -98,6 +107,9 @@ public sealed class ReservationServiceTests
         Assert.Equal(1, repository.SaveChangesCalls);
     }
 
+    /// <summary>
+    /// Persists an insufficient-funds outcome and verifies that retrying it returns the same rejection without mutation.
+    /// </summary>
     [Fact]
     public async Task CreateAsync_WithInsufficientFunds_PersistsAndReplaysRejection()
     {
@@ -132,6 +144,9 @@ public sealed class ReservationServiceTests
         Assert.Equal(2, repository.CommitCalls);
     }
 
+    /// <summary>
+    /// Omits the required idempotency key and verifies early validation before any lock or transaction begins.
+    /// </summary>
     [Fact]
     public async Task CreateAsync_WithoutIdempotencyKey_RejectsBeforeLockOrTransaction()
     {
@@ -154,6 +169,9 @@ public sealed class ReservationServiceTests
         Assert.Equal(0, repository.SaveChangesCalls);
     }
 
+    /// <summary>
+    /// Targets an unknown account and verifies an expected not-found result with no persistence or commit.
+    /// </summary>
     [Fact]
     public async Task CreateAsync_WithMissingAccount_ReturnsExpectedFailureWithoutSaving()
     {

@@ -6,6 +6,9 @@ namespace DemoTradeLab.IntegrationTests;
 
 public sealed class LocalAccountLockManagerTests
 {
+    /// <summary>
+    /// Acquires the same account key twice and verifies that the second caller waits until the first lease is disposed.
+    /// </summary>
     [Fact]
     public async Task AcquireAsync_ForSameAccount_WaitsUntilFirstLeaseIsReleased()
     {
@@ -26,6 +29,9 @@ public sealed class LocalAccountLockManagerTests
         await using var secondLease = await secondLeaseTask.WaitAsync(TimeSpan.FromSeconds(1));
     }
 
+    /// <summary>
+    /// Acquires two different account keys and verifies that unrelated accounts do not share one global lock.
+    /// </summary>
     [Fact]
     public async Task AcquireAsync_ForDifferentAccounts_UsesIndependentLocks()
     {
@@ -42,6 +48,9 @@ public sealed class LocalAccountLockManagerTests
         await using var secondLease = await secondLeaseTask.WaitAsync(TimeSpan.FromSeconds(1));
     }
 
+    /// <summary>
+    /// Cancels a waiting caller and verifies that cancellation does not lose or permanently block the keyed lock.
+    /// </summary>
     [Fact]
     public async Task AcquireAsync_WhenWaitingIsCancelled_DoesNotAbandonAccountLock()
     {
@@ -63,6 +72,9 @@ public sealed class LocalAccountLockManagerTests
             CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(1));
     }
 
+    /// <summary>
+    /// Throws while a lease is held and verifies that asynchronous disposal still releases the account lock.
+    /// </summary>
     [Fact]
     public async Task AsyncLease_WhenOperationThrows_ReleasesAccountLock()
     {

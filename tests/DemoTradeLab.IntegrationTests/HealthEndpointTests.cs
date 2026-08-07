@@ -17,6 +17,9 @@ public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Pr
         });
     }
 
+    /// <summary>
+    /// Calls the health endpoint through the in-memory test server and verifies a successful typed health response.
+    /// </summary>
     [Fact]
     public async Task GetHealth_ReturnsHealthyResponse()
     {

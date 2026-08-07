@@ -10,6 +10,9 @@ namespace DemoTradeLab.IntegrationTests.Persistence;
 
 public sealed class SampleDataSeedingTests
 {
+    /// <summary>
+    /// Migrates an empty database twice and verifies that the fictional sample trades are seeded exactly once.
+    /// </summary>
     [Fact]
     public async Task MigrateAsync_OnEmptyDatabase_SeedsSampleTradesOnlyOnce()
     {

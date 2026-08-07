@@ -5,6 +5,9 @@ namespace DemoTradeLab.IntegrationTests.Configuration;
 
 public sealed class DemoEnvironmentOptionsTests
 {
+    /// <summary>
+    /// Supplies duplicate normalized configuration keys and verifies startup option validation reports profile and account errors.
+    /// </summary>
     [Fact]
     public void Validate_WithDuplicateProfileAndAccountKeys_ReturnsErrors()
     {

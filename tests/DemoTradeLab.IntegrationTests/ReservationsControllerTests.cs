@@ -50,6 +50,9 @@ public sealed class ReservationsControllerTests : IAsyncLifetime
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Runs create, read, list, and release through HTTP and verifies the reservation lifecycle and persisted balances.
+    /// </summary>
     [Fact]
     public async Task CreateReadListRelease_FullLifecyclePersistsExpectedState()
     {
@@ -83,6 +86,9 @@ public sealed class ReservationsControllerTests : IAsyncLifetime
         await AssertBalancesAsync(total: 100m, reserved: 0m, available: 100m);
     }
 
+    /// <summary>
+    /// Consumes an active reservation through HTTP and verifies the corresponding total and reserved balance reductions.
+    /// </summary>
     [Fact]
     public async Task Consume_ActiveReservation_ReducesPersistedTotalBalance()
     {
@@ -101,6 +107,9 @@ public sealed class ReservationsControllerTests : IAsyncLifetime
         await AssertBalancesAsync(total: 20m, reserved: 0m, available: 20m);
     }
 
+    /// <summary>
+    /// Requests more funds than are available and verifies HTTP 409, a durable rejection, and unchanged account balances.
+    /// </summary>
     [Fact]
     public async Task Create_WithInsufficientFunds_ReturnsConflictWithoutChangingState()
     {
@@ -131,6 +140,9 @@ public sealed class ReservationsControllerTests : IAsyncLifetime
             Assert.Single(context.ReservationAuditEntries).EventType);
     }
 
+    /// <summary>
+    /// Posts an invalid reservation amount and verifies automatic DTO validation returns HTTP 400 before persistence.
+    /// </summary>
     [Fact]
     public async Task Create_WithInvalidAmount_ReturnsAutomaticValidationProblem()
     {
@@ -142,6 +154,9 @@ public sealed class ReservationsControllerTests : IAsyncLifetime
         await AssertBalancesAsync(total: 100m, reserved: 0m, available: 100m);
     }
 
+    /// <summary>
+    /// Targets an unknown account and verifies that reservation creation returns HTTP 404 without stored side effects.
+    /// </summary>
     [Fact]
     public async Task Create_ForMissingAccount_ReturnsNotFound()
     {
@@ -157,6 +172,9 @@ public sealed class ReservationsControllerTests : IAsyncLifetime
         Assert.Equal("Demo account not found", problem?.Title);
     }
 
+    /// <summary>
+    /// Attempts to release an unknown reservation and verifies HTTP 404 without changing the owning account.
+    /// </summary>
     [Fact]
     public async Task Release_MissingReservation_ReturnsNotFound()
     {
@@ -170,6 +188,9 @@ public sealed class ReservationsControllerTests : IAsyncLifetime
         Assert.Equal("Reservation not found", problem?.Title);
     }
 
+    /// <summary>
+    /// Attempts to consume a released reservation and verifies HTTP 409 without applying a second balance mutation.
+    /// </summary>
     [Fact]
     public async Task Consume_ReleasedReservation_ReturnsConflictWithoutSecondBalanceChange()
     {
@@ -193,6 +214,9 @@ public sealed class ReservationsControllerTests : IAsyncLifetime
         Assert.Equal(ReservationStatus.Released, persisted?.Status);
     }
 
+    /// <summary>
+    /// Lists reservations for an unknown account and verifies that the parent-resource boundary returns HTTP 404.
+    /// </summary>
     [Fact]
     public async Task List_ForMissingAccount_ReturnsNotFound()
     {
@@ -202,6 +226,9 @@ public sealed class ReservationsControllerTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    /// <summary>
+    /// Repeats creation with the same idempotency key and verifies one reservation, one balance change, and replay metadata.
+    /// </summary>
     [Fact]
     public async Task Create_WithSameIdempotencyKey_ReplaysPersistedReservationOnce()
     {
@@ -228,6 +255,9 @@ public sealed class ReservationsControllerTests : IAsyncLifetime
         Assert.Single(context.ReservationAuditEntries);
     }
 
+    /// <summary>
+    /// Reuses a creation key with another amount and verifies HTTP 409 without another reservation or balance change.
+    /// </summary>
     [Fact]
     public async Task Create_WithReusedKeyAndDifferentAmount_ReturnsConflict()
     {
@@ -244,6 +274,9 @@ public sealed class ReservationsControllerTests : IAsyncLifetime
         await AssertBalancesAsync(total: 100m, reserved: 80m, available: 20m);
     }
 
+    /// <summary>
+    /// Omits the required creation idempotency header and verifies an HTTP 400 validation Problem Details response.
+    /// </summary>
     [Fact]
     public async Task Create_WithoutIdempotencyKey_ReturnsValidationProblem()
     {
@@ -257,6 +290,9 @@ public sealed class ReservationsControllerTests : IAsyncLifetime
         await AssertBalancesAsync(total: 100m, reserved: 0m, available: 100m);
     }
 
+    /// <summary>
+    /// Repeats release with the same key and verifies replay without a second audit entry or balance mutation.
+    /// </summary>
     [Fact]
     public async Task Release_WithSameIdempotencyKey_ReplaysWithoutSecondAuditOrBalanceChange()
     {
@@ -288,6 +324,9 @@ public sealed class ReservationsControllerTests : IAsyncLifetime
                 entry => entry.EventType == ReservationAuditEventType.Released));
     }
 
+    /// <summary>
+    /// Reuses a completion key for another operation and verifies HTTP 409 with the original completion preserved.
+    /// </summary>
     [Fact]
     public async Task Completion_WithReusedKeyForDifferentOperation_ReturnsConflict()
     {

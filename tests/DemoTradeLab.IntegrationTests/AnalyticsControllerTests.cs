@@ -31,6 +31,9 @@ public sealed class AnalyticsControllerTests : IAsyncLifetime
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Calls the dashboard endpoint against an empty SQLite database and verifies its zero-valued HTTP response contract.
+    /// </summary>
     [Fact]
     public async Task Dashboard_OnEmptyDatabase_ReturnsEmptyStatistics()
     {
@@ -44,6 +47,9 @@ public sealed class AnalyticsControllerTests : IAsyncLifetime
         Assert.Empty(dashboard.CurrencyPerformance);
     }
 
+    /// <summary>
+    /// Persists representative trades and verifies dashboard, instrument, and timeline endpoints through the full HTTP stack.
+    /// </summary>
     [Fact]
     public async Task AnalyticsEndpoints_WithTrades_ReturnExpectedAggregatesAndTimeline()
     {

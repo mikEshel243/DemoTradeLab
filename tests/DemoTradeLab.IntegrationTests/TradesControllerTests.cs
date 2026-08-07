@@ -31,6 +31,9 @@ public sealed class TradesControllerTests : IAsyncLifetime
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Lists trades from an empty migrated database and verifies HTTP 200 with an empty JSON array.
+    /// </summary>
     [Fact]
     public async Task List_OnEmptyDatabase_ReturnsEmptyArray()
     {
@@ -42,6 +45,9 @@ public sealed class TradesControllerTests : IAsyncLifetime
         Assert.Empty(trades);
     }
 
+    /// <summary>
+    /// Executes create, read, update, and delete through HTTP and verifies every change in the SQLite-backed API.
+    /// </summary>
     [Fact]
     public async Task CrudLifecycle_WithValidRequest_PersistsExpectedChanges()
     {
@@ -96,6 +102,9 @@ public sealed class TradesControllerTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NotFound, missingResponse.StatusCode);
     }
 
+    /// <summary>
+    /// Posts a closing time before the opening time and verifies an HTTP 400 validation Problem Details response.
+    /// </summary>
     [Fact]
     public async Task Create_WithInvalidTimeRange_ReturnsValidationProblemDetails()
     {
@@ -116,6 +125,9 @@ public sealed class TradesControllerTests : IAsyncLifetime
         Assert.Contains(nameof(SaveTradeRequest.ClosedAtUtc), problem.Errors.Keys);
     }
 
+    /// <summary>
+    /// Omits required request fields and verifies automatic API-boundary validation before the use case executes.
+    /// </summary>
     [Fact]
     public async Task Create_WithMissingRequiredFields_ReturnsValidationProblemDetails()
     {
@@ -133,6 +145,9 @@ public sealed class TradesControllerTests : IAsyncLifetime
         Assert.Contains(nameof(SaveTradeRequest.OpeningPrice), problem.Errors.Keys);
     }
 
+    /// <summary>
+    /// Queries the HTTP list endpoint with combined filters and sorting and verifies only the ordered matches are returned.
+    /// </summary>
     [Fact]
     public async Task List_WithFiltersAndSorting_ReturnsMatchingTradesInRequestedOrder()
     {
@@ -163,6 +178,9 @@ public sealed class TradesControllerTests : IAsyncLifetime
         Assert.Equal([10.05m, 2.10m], trades.Select(trade => trade.RealizedProfitLoss));
     }
 
+    /// <summary>
+    /// Sends a non-UTC date filter and verifies that the API rejects ambiguous time-zone input with HTTP 400.
+    /// </summary>
     [Fact]
     public async Task List_WithNonUtcDateFilter_ReturnsValidationProblemDetails()
     {

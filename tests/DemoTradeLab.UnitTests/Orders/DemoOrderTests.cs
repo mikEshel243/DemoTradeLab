@@ -15,6 +15,9 @@ public sealed class DemoOrderTests
         0,
         TimeSpan.Zero);
 
+    /// <summary>
+    /// Creates an order from an active reservation and verifies that it starts pending without changing reserved funds.
+    /// </summary>
     [Fact]
     public void Create_FromActiveReservation_CreatesPendingOrderWithoutChangingBalance()
     {
@@ -29,6 +32,9 @@ public sealed class DemoOrderTests
         Assert.Equal(80m, account.ReservedBalance);
     }
 
+    /// <summary>
+    /// Completes a pending order and verifies that its reservation and account balances are consumed together.
+    /// </summary>
     [Fact]
     public void Complete_PendingOrder_ConsumesReservationAndBalance()
     {
@@ -45,6 +51,9 @@ public sealed class DemoOrderTests
         Assert.Equal(20m, account.AvailableBalance);
     }
 
+    /// <summary>
+    /// Fails an order and then compensates it, proving that failure recording and fund release are separate transitions.
+    /// </summary>
     [Fact]
     public void FailThenCompensate_ReleasesReservationInSeparateTransition()
     {
@@ -70,6 +79,9 @@ public sealed class DemoOrderTests
         Assert.Equal(0m, account.ReservedBalance);
     }
 
+    /// <summary>
+    /// Attempts to complete a failed order and verifies a business rejection with no order or balance mutation.
+    /// </summary>
     [Fact]
     public void Complete_FailedOrder_ReturnsBusinessRejectionWithoutMutation()
     {
@@ -86,6 +98,9 @@ public sealed class DemoOrderTests
         Assert.Equal(80m, account.ReservedBalance);
     }
 
+    /// <summary>
+    /// Repeats compensation after the target state was reached and verifies a successful retry-safe no-op.
+    /// </summary>
     [Fact]
     public void Compensate_AlreadyCompensatedOrder_ReturnsSuccessfulNoOp()
     {

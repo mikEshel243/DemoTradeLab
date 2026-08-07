@@ -41,6 +41,9 @@ public sealed class DemoProfilesControllerTests : IAsyncLifetime
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Reads seeded demo profiles through HTTP and verifies persisted accounts and calculated available balances in their DTOs.
+    /// </summary>
     [Fact]
     public async Task List_ReturnsPersistedProfilesAndCalculatedAvailableBalance()
     {

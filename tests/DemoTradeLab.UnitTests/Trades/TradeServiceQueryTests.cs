@@ -4,6 +4,9 @@ namespace DemoTradeLab.UnitTests.Trades;
 
 public sealed class TradeServiceQueryTests
 {
+    /// <summary>
+    /// Filters text without case sensitivity and verifies exact decimal sorting through the trade query use case.
+    /// </summary>
     [Fact]
     public async Task ListAsync_FiltersCaseInsensitivelyAndSortsDecimalValuesExactly()
     {
@@ -53,6 +56,9 @@ public sealed class TradeServiceQueryTests
         Assert.Equal([higherProfit.Id, lowerProfit.Id], result.Select(trade => trade.Id));
     }
 
+    /// <summary>
+    /// Combines direction, source, UTC date, and duration filters and verifies that only matching trades are returned.
+    /// </summary>
     [Fact]
     public async Task ListAsync_AppliesDirectionSourceDateAndDurationFilters()
     {
