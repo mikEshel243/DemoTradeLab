@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "true"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore local tools
+        run: dotnet tool restore
+
+      - name: Restore dependencies and audit packages
+        run: >-
+          dotnet restore DemoTradeLab.sln
+          -p:NuGetAudit=true
+          -p:NuGetAuditMode=all
+          -p:TreatWarningsAsErrors=true
+
+      - name: Verify formatting
+        run: dotnet format DemoTradeLab.sln --verify-no-changes --no-restore
+
+      - name: Build
+        run: dotnet build DemoTradeLab.sln --configuration Release --no-restore
+
+      - name: Test
+        run: >-
+          dotnet test DemoTradeLab.sln
+          --configuration Release
+          --no-build
+          --no-restore
+
+      - name: Verify EF Core model matches migrations
+        run: >-
+          dotnet ef migrations has-pending-model-changes
+          --project src/DemoTradeLab.Infrastructure
+          --startup-project src/DemoTradeLab.Api
+          --configuration Release
+          --no-build
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web/demotrade-lab-web
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/demotrade-lab-web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Audit production and development dependencies
+        run: npm audit --audit-level=high
