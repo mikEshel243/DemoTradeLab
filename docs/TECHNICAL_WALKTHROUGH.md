@@ -1,8 +1,8 @@
-# Interview Demonstration Script
+# Technical Walkthrough
 
-This script presents DemoTradeLab as an educational backend project, not a real trading platform. All data is fictional and the application has no broker connection or trading recommendation functionality.
+This walkthrough presents DemoTradeLab as an educational backend project, not a real trading platform. All data is fictional, and the application has no broker connection or trading-recommendation functionality.
 
-## Five-minute overview
+## Five-minute architecture walkthrough
 
 ### 1. Architecture - 45 seconds
 
@@ -47,7 +47,7 @@ State the boundary: the lock coordinates one application process. It is not a di
 
 Open `ReservationConcurrencyTests.ConcurrentReservations_OfEightyAgainstOneHundred_ProduceOneSuccess`.
 
-Explain why gates are used instead of sleeps. Show the final assertions: one success, one conflict, one reservation, two durable outcomes, total 100, reserved 80, available 20.
+Explain why gates are used instead of sleeps. Show the final assertions: one success, one conflict, one reservation, two durable outcomes, total `100`, reserved `80`, and available `20`.
 
 ### 5. Failure and recovery - 60 seconds
 
@@ -59,7 +59,7 @@ Explain:
 - Domain objects change inside the failed request, but the transaction does not commit.
 - The next request reloads the original pending state.
 - Removing the failure and retrying succeeds.
-- This differs from a 409 business rejection, which is expected control flow.
+- This differs from an HTTP 409 business rejection, which is expected control flow.
 
 ### 6. Verification - 30 seconds
 
@@ -69,22 +69,22 @@ Run:
 dotnet test DemoTradeLab.sln
 ```
 
-Mention frontend lint/build, migration-model checking, and vulnerability auditing.
+Also point to frontend lint/build, migration-model checking, dependency auditing, and the GitHub Actions workflow.
 
-## Ten-minute live demonstration
+## Ten-minute end-to-end demonstration
 
 1. Run `GET /api/demo-profiles` and choose a fictional account.
-2. Create a reservation with `Idempotency-Key: interview-create-1`.
+2. Create a reservation with `Idempotency-Key: walkthrough-create-1`.
 3. Repeat the request and show `Idempotency-Replayed: true`.
-4. Create an order from that reservation.
+4. Create an order from the reservation.
 5. Mark it failed.
 6. Show reconciliation reporting one failed order and reserved funds.
 7. Compensate it.
-8. Show reconciliation healthy and order-event history.
+8. Show reconciliation healthy and read the order-event history.
 9. Run the focused deterministic concurrency test.
-10. Finish with the architecture boundary and what would change for multi-instance deployment.
+10. Finish with the single-process boundary and describe what would need to change for multi-instance deployment.
 
-## Likely interview questions
+## Design questions and trade-offs
 
 ### Why not use exceptions for insufficient funds?
 
@@ -92,20 +92,20 @@ Insufficient funds is an expected business outcome. A result object keeps it exp
 
 ### Why both a lock and a database transaction?
 
-The local lock serializes same-account operations inside one process. The transaction guarantees all database writes commit or roll back together. They solve different problems.
+The local lock serializes same-account operations inside one process. The transaction guarantees that all database writes commit or roll back together. They solve different problems.
 
 ### Why persist idempotency?
 
-An in-memory key disappears after restart. A durable record in the same transaction prevents a balance change without its retry outcome and allows consistent replay later.
+An in-memory key disappears after restart. A durable record in the same transaction prevents a balance change from existing without its retry outcome, or vice versa, and allows consistent replay later.
 
 ### Why is the SQLite solution not multi-instance safe?
 
-Each process owns a different semaphore. SQLite does not provide the row-locking semantics assumed by common server-database pessimistic-lock designs. Cross-instance correctness requires a provider-specific or distributed coordination strategy.
+Each process owns a different semaphore. SQLite does not provide the row-locking semantics assumed by common server-database pessimistic-lock designs. Cross-instance correctness requires a provider-specific or distributed coordination strategy and separate tests.
 
 ### Why separate failure and compensation?
 
 Recovery can itself be delayed or fail. Persisting `Failed` makes unfinished recovery visible to reconciliation; a later explicit compensation command is independently retryable.
 
-### What would you improve for production scale?
+### What would change for a production deployment?
 
-Authentication/authorization, a server database, provider-specific concurrency control, pagination, observability, migration deployment policy, distributed tracing, retention policies, and cross-instance tests. None should be implied by this intentionally local educational project.
+Authentication and authorization, a server database, provider-specific concurrency control, pagination, observability, migration deployment policy, distributed tracing, retention policies, and cross-instance tests would all need explicit designs. None are implied by this intentionally local educational project.

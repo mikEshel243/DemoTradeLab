@@ -135,6 +135,6 @@ Status: Complete
 - [x] Add a visual architecture, atomic-operation, and state-machine diagram
 - [x] Add a test and debugging guide organized by backend concept and execution flow
 - [x] Expand coverage for idempotency, deterministic concurrency, recovery, reconciliation, and rollback/retry
-- [x] Add a focused interview demonstration script
+- [x] Add a focused technical walkthrough
 
 All planned educational milestones are complete. Future work should begin as a separately scoped learning exercise rather than silently extending the current roadmap.

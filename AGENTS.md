@@ -2,10 +2,10 @@
 
 ## Scope and safety
 
-- DemoTradeLab is an unofficial educational project. Never imply affiliation with Plus500 or any financial institution.
+- DemoTradeLab is an unofficial educational project. Never imply affiliation with any brokerage or financial institution.
 - Use only fictional, manually entered, or anonymized demo data.
 - Never request brokerage credentials, connect to live trading APIs, submit orders, scrape broker platforms, or add trading recommendations.
-- Do not implement a Plus500-specific importer until an anonymized sample is supplied. Treat every imported file as untrusted.
+- Do not implement a broker-specific importer until an anonymized sample and an explicitly approved scope are supplied. Treat every imported file as untrusted.
 - Work one roadmap milestone at a time and avoid unrelated refactors.
 
 ## Architecture

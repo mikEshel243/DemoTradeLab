@@ -1,239 +1,183 @@
 # DemoTradeLab
 
-DemoTradeLab is a portfolio and interview-preparation project for learning C# and ASP.NET Core through an educational demo-trading analytics application and backend reliability simulator.
+DemoTradeLab is a full-stack educational trading application built to deepen practical experience with C#, .NET, and ASP.NET Core through a realistic but deliberately local system. It combines a fictional trade-analytics dashboard with backend exercises in transactions, concurrency control, idempotency, recovery, and reconciliation.
 
-This is an unofficial educational project. It is not affiliated with, endorsed by, or connected to Plus500 or any other financial institution. It never connects to real trading accounts, accepts brokerage credentials, submits real orders, or provides automated trading recommendations.
+All data is fictional or manually entered. The application does not connect to brokerage accounts, submit real orders, or provide trading recommendations.
 
-## Current scope
+## What it demonstrates
 
-The repository foundation, trade CRUD backend, analytics API, React dashboard, and configurable fictional demo environment are complete:
+- A modular-monolith backend with enforced API, Core, and Infrastructure boundaries.
+- Domain models that protect trade, balance, reservation, and order invariants.
+- Controller-based REST endpoints with explicit DTOs, validation, cancellation, and Problem Details.
+- EF Core persistence with SQLite, committed migrations, and explicit transaction boundaries.
+- Process-local asynchronous locking for same-account operations.
+- Durable idempotency for reservation creation and completion requests.
+- A recoverable order workflow with separate failure and compensation transitions.
+- Reconciliation that detects balance inconsistencies and unfinished compensation work.
+- Deterministic concurrency and rollback tests using the real HTTP-to-SQLite path.
+- A typed React and TypeScript dashboard backed by server-side analytics.
 
-- .NET 10 modular-monolith solution
-- Controller-based ASP.NET Core Web API
-- Core and Infrastructure class libraries
-- xUnit unit and integration test projects
-- OpenAPI document generation in Development
-- `GET /api/health` health endpoint
-- Completed-trade domain model with explicit validation results
-- Unit tests for trade invariants and normalization
-- EF Core 10 with SQLite persistence
-- Initial `Trades` database migration
-- Integration test covering migration, save, and reload
-- Eight fictional sample trades seeded into a new empty database
-- Trade create, read, update, and delete endpoints
-- Structured validation and not-found Problem Details
-- Filterable and sortable trade listing
-- Dashboard statistics, instrument summaries, and profit/loss timeline endpoints
-- Currency-separated monetary analytics
-- React 19, TypeScript, and Vite dashboard
-- Responsive summary, timeline, instrument, trade-table, and trade-details views
-- Loading, API-error, empty-result, filtering, and sorting states
-- Startup-validated fictional demo profiles and accounts from `demo-environment.json`
-- SQLite-persisted account balances that are not reset by later configuration initialization
-- `GET /api/demo-profiles` with total, reserved, and calculated available balances
+## Tech Stack
 
-Milestones 0-6 are complete: reservation and order lifecycles, per-account locking, explicit transactions, durable idempotency/audit records, deterministic concurrency verification, compensation, reconciliation, rollback/retry scenarios, and the final learning and interview guides are implemented. Importing is no longer a roadmap milestone.
+| Area | Technologies |
+| --- | --- |
+| Backend | C#, .NET 10, ASP.NET Core controllers, built-in dependency injection and logging |
+| Persistence | EF Core 10, SQLite, Fluent configuration, migrations |
+| Frontend | React 19, TypeScript, Vite, browser Fetch API |
+| Testing | xUnit, `WebApplicationFactory`, temporary SQLite databases, Coverlet collector |
+| API tooling | OpenAPI document generation in Development, executable `.http` requests |
 
-![DemoTradeLab dashboard with fictional seed data](docs/images/dashboard.png)
+## Architecture
 
-## Lock-based concurrency lesson
+DemoTradeLab is a modular monolith. The projects are deployed together, while project references keep responsibilities explicit:
 
-Milestone 5 demonstrates an educational balance-reservation scenario in which two concurrent requests try to reserve the same account funds. Milestone 5B protects account state transitions with one local asynchronous lock per account and stores the balance change, reservation, idempotency outcome, and audit event in one explicit transaction. Milestone 5C deterministically proves that two requests for `80` against `100` produce one success, one rejection, and a final available balance of `20`.
-
-This lock-based implementation is deliberately limited to one application process. It is not a distributed lock and does not claim multi-instance safety with SQLite. See the roadmap and architectural decisions for the verified test strategy and remaining boundary.
-
-The concurrency test does not use arbitrary delays. A controlled test lock pauses the first real HTTP request after lock acquisition, observes the second request attempting the same lock, and then releases the first. Separate tests exercise the production lock itself for same-account waiting, different-account independence, cancellation, and exception cleanup.
-
-## Prerequisites
-
-- .NET 10 SDK
-- Git
-- A Node.js version supported by Vite 8; Node.js 24.16.0 was used for this milestone
-
-The foundation was created and verified with .NET SDK 10.0.302.
-
-## Build and test
-
-From the repository root:
-
-```powershell
-dotnet tool restore
-dotnet restore DemoTradeLab.sln
-dotnet build DemoTradeLab.sln
-dotnet test DemoTradeLab.sln
+```text
+React client ------> DemoTradeLab.Api ------> DemoTradeLab.Core
+                           |                         ^
+                           v                         |
+                 DemoTradeLab.Infrastructure -------+
+                           |
+                           v
+                         SQLite
 ```
 
-`dotnet tool restore` installs the repository-pinned `dotnet-ef` command. It does not install a machine-global tool.
+- `DemoTradeLab.Api` owns HTTP endpoints, request/response DTOs, error mapping, and application configuration.
+- `DemoTradeLab.Core` owns domain models, business rules, interfaces, and use-case orchestration. It has no dependency on ASP.NET Core or EF Core.
+- `DemoTradeLab.Infrastructure` owns EF Core, SQLite, repositories, migrations, seeding, transactions, and the local account-lock implementation.
+- Controllers map between HTTP contracts and Core results; they do not return EF Core entities.
 
-## Create or update the local database
+See the [detailed architecture](docs/ARCHITECTURE.md) and [architecture diagrams](docs/ARCHITECTURE_DIAGRAM.md).
 
-Apply all committed EF Core migrations:
+## Backend Reliability & Engineering Concepts
 
-```powershell
-dotnet ef database update `
-  --project src/DemoTradeLab.Infrastructure `
-  --startup-project src/DemoTradeLab.Api
-```
+### Explicit atomic transactions
 
-The default SQLite database is `demotrade-lab.db`. Database files are local development artifacts and are ignored by Git.
+Reservation and order operations group related balance changes, workflow records, idempotency outcomes, and audit events in an explicit EF Core transaction. A simulated SQLite write failure verifies that partial in-memory changes are not committed and that a later retry can succeed.
 
-Database update also seeds eight fictional sample trades when the `Trades` table is empty and adds missing fictional profiles/accounts from `src/DemoTradeLab.Api/demo-environment.json`. Re-running the command does not duplicate records or reset balances already stored in SQLite.
+### Per-account asynchronous locking
 
-Migrations are not applied automatically during API startup. This keeps schema changes explicit and prevents an application instance from unexpectedly changing a database.
+An `IAccountLockManager` implementation uses a keyed `SemaphoreSlim` to serialize operations for the same account inside one API process while allowing different account keys to proceed independently. Cancellation and exception tests verify that leases release correctly.
 
-## Run the API
+This is intentionally not described as a distributed lock. Separate application processes would own separate semaphores, and SQLite does not supply the row-locking semantics needed to extend this design automatically to multiple instances.
 
-```powershell
-dotnet run --project src/DemoTradeLab.Api
-```
+### Durable idempotency
 
-With the default HTTP launch profile, request:
+Reservation creation requires an `Idempotency-Key`. Successful reservations and insufficient-funds rejections are both persisted, allowing a retry to replay the original outcome after a restart. Reusing a key with different input is rejected. Release and consume operations use durable completion records, while order creation and target-state retries return safe no-op results where appropriate.
 
-```http
-GET http://localhost:5122/api/health
-```
+### Recovery and compensation
 
-Example response:
-
-```json
-{
-  "status": "Healthy",
-  "checkedAtUtc": "2026-08-04T10:00:00+00:00"
-}
-```
-
-In Development, the OpenAPI document is available at `/openapi/v1.json`.
-
-## Fictional demo profiles and accounts
-
-`src/DemoTradeLab.Api/demo-environment.json` defines the initial fictional profiles and accounts. These are not authenticated users: they have no passwords, credentials, tokens, email addresses, or connection to a real broker.
-
-The file is initialization input, not the live account database. Run the explicit database-update command after adding a new configured profile or account. Existing records and balances are preserved; changing an existing configured initial balance does not overwrite its SQLite state.
-
-Each account persists `totalBalance` and `reservedBalance`. The API calculates `availableBalance` as `totalBalance - reservedBalance`, so there is no third stored value that can become inconsistent. Milestone 5B coordinates these changes with a local per-account lock and explicit transaction.
-
-| Method | Route | Result |
-| --- | --- | --- |
-| `GET` | `/api/demo-profiles` | Lists persisted fictional profiles, accounts, and balances |
-
-## Reservation lifecycle API
-
-Milestone 5A exposes every supported sequential lifecycle operation. Reservations are not edited or deleted because their state is useful history; business actions move them from `active` to exactly one terminal state.
-
-| Method | Route | Result |
-| --- | --- | --- |
-| `GET` | `/api/demo-accounts/{accountId}/reservations` | Lists reservations for an existing demo account |
-| `GET` | `/api/demo-accounts/{accountId}/reservations/{reservationId}` | Returns one reservation |
-| `POST` | `/api/demo-accounts/{accountId}/reservations` | Requires `Idempotency-Key`, reserves available funds, and returns 201 |
-| `POST` | `/api/demo-accounts/{accountId}/reservations/{reservationId}/release` | Releases reserved funds back to available balance |
-| `POST` | `/api/demo-accounts/{accountId}/reservations/{reservationId}/consume` | Deducts consumed funds from total and reserved balance |
-
-A creation amount that exceeds available balance returns HTTP 409 without changing persisted state. Invalid request data returns HTTP 400, and missing resources return HTTP 404. Releasing or consuming an already completed reservation returns HTTP 409 in this milestone.
-
-`Idempotency-Key` is an opaque, case-sensitive value of at most 100 characters. Retrying the same account, key, and amount returns the original outcome and adds `Idempotency-Replayed: true`. Reusing the key with a different amount returns HTTP 409. Both successful creation and insufficient-funds rejection are durable, so retry behavior survives an application restart.
-
-Release and consume requests also require an `Idempotency-Key`. Retrying the same reservation and operation replays success. Reusing that key for another reservation or completion operation returns HTTP 409.
-
-## Order recovery API
-
-An order is created from one active reservation and follows one explicit path:
+The order state machine keeps failure and recovery separate:
 
 ```text
 Pending -> Completed
 Pending -> Failed -> Compensated
 ```
 
-Completing consumes reserved funds. Marking an order failed intentionally leaves the reservation active, representing recovery work that is still required. Compensation later releases the reservation. Repeating a transition that already reached its target state is a successful no-op; contradictory transitions return HTTP 409.
+A failed order deliberately keeps its reservation active so unfinished recovery remains visible. Compensation is a later explicit transaction that releases the funds and records durable order and reservation history.
 
-| Method | Route | Result |
-| --- | --- | --- |
-| `GET` | `/api/demo-accounts/{accountId}/orders` | Lists account orders |
-| `GET` | `/api/demo-accounts/{accountId}/orders/{orderId}` | Returns one order |
-| `POST` | `/api/demo-accounts/{accountId}/orders` | Creates or replays an order for a reservation |
-| `POST` | `/api/demo-accounts/{accountId}/orders/{orderId}/complete` | Consumes the reservation and completes the order |
-| `POST` | `/api/demo-accounts/{accountId}/orders/{orderId}/fail` | Records the simulated later failure |
-| `POST` | `/api/demo-accounts/{accountId}/orders/{orderId}/compensate` | Releases funds for a failed order |
-| `GET` | `/api/demo-accounts/{accountId}/orders/{orderId}/events` | Returns durable order history |
-| `GET` | `/api/demo-accounts/{accountId}/orders/reconciliation` | Compares reserved balance with active reservations and reports failed orders |
+### Reconciliation
 
-The rollback integration test installs a temporary SQLite trigger that rejects a completion event. The endpoint returns HTTP 500, the transaction rolls back, and a later retry succeeds after the trigger is removed. This is separate from HTTP 409, which represents an expected business rejection and not a technical failure.
+The reconciliation endpoint compares persisted reserved balance with the sum of active reservations and reports failed orders awaiting compensation. It detects inconsistencies but does not automatically repair them, because choosing an authoritative value requires an explicit recovery policy.
 
-See the [testing and debugging guide](docs/TESTING_GUIDE.md) for the recommended test order, breakpoint locations, focused commands, and end-to-end flows.
+### Expected errors versus technical failures
 
-## Trade API
+Expected business rejections use result objects and map to validation responses, HTTP 404, or HTTP 409 Problem Details. Unexpected infrastructure failures flow through ASP.NET Core's exception handler as HTTP 500 and are protected by transaction rollback.
 
-| Method | Route | Result |
-| --- | --- | --- |
-| `GET` | `/api/trades` | Lists trades |
-| `GET` | `/api/trades/{id}` | Returns one trade or 404 Problem Details |
-| `POST` | `/api/trades` | Creates a manual trade and returns 201 |
-| `PUT` | `/api/trades/{id}` | Replaces editable trade fields |
-| `DELETE` | `/api/trades/{id}` | Deletes a trade and returns 204 |
+## Testing
 
-Create and update requests accept string enum values such as `"buy"` and `"sell"`. New API-created trades always receive the `manual` source; clients cannot claim that a record came from sample or imported data.
+The current suite contains 77 passing backend tests:
 
-See `src/DemoTradeLab.Api/DemoTradeLab.Api.http` for an executable request example.
+| Test layer | Count | Examples |
+| --- | ---: | --- |
+| Unit | 39 | Domain invariants, analytics, state machines, service orchestration, idempotent replay |
+| Integration | 38 | HTTP contracts, EF mappings, migrations, SQLite persistence, concurrency, rollback and retry |
 
-`GET /api/trades` accepts these optional query parameters:
+Notable scenarios include:
 
-| Parameter | Values or meaning |
-| --- | --- |
-| `instrument` | Exact instrument match, case-insensitive |
-| `currency` | Three-letter currency code, case-insensitive |
-| `direction` | `buy` or `sell` |
-| `source` | `manual`, `sample`, or `imported` |
-| `outcome` | `profitable`, `losing`, or `breakEven` |
-| `closedFromUtc` | Inclusive UTC closing-time lower bound |
-| `closedToUtc` | Inclusive UTC closing-time upper bound |
-| `sortBy` | `closedAtUtc`, `openedAtUtc`, `instrument`, `realizedProfitLoss`, or `duration` |
-| `sortDirection` | `ascending` or `descending` |
+- Two concurrent reservations of `80` against a balance of `100` produce one success, one rejection, and a final available balance of `20`.
+- Two concurrent requests with the same idempotency key persist one reservation and replay one result.
+- Same-account lock acquisition waits, while different accounts use independent locks.
+- A temporary SQLite trigger forces a write failure; the transaction rolls back and the operation succeeds after the trigger is removed.
+- Reconciliation reports a deliberately corrupted reserved-balance value without silently modifying it.
 
-The default order is newest closing time first. Example:
+Concurrency tests use explicit coordination gates instead of timing-dependent sleeps. Integration tests run through ASP.NET Core's test host and isolated temporary SQLite databases.
 
-```http
-GET /api/trades?instrument=EUR%2FUSD&outcome=profitable&sortBy=realizedProfitLoss&sortDirection=descending
-```
+The frontend currently has lint and production-build validation but no automated component or end-to-end test suite.
 
-## Analytics API
+See the [testing and debugging guide](docs/TESTING_GUIDE.md) for focused commands, useful breakpoint locations, and an ordered walkthrough of the backend layers.
 
-| Method | Route | Result |
-| --- | --- | --- |
-| `GET` | `/api/analytics/dashboard` | Counts, win rate, most active instrument, average duration, and currency performance |
-| `GET` | `/api/analytics/instruments` | Statistics grouped by instrument and currency |
-| `GET` | `/api/analytics/profit-loss-timeline` | Chronological and cumulative realized profit/loss points per currency |
+## Screenshots
 
-Win rate is profitable trades divided by all completed trades, including break-even trades in the denominator. Monetary values are never summed across different currencies. Best trade, worst trade, total realized profit/loss, and timeline totals are therefore separated by currency.
+![DemoTradeLab dashboard displaying fictional trade analytics](docs/images/dashboard.png)
 
-Analytics currently use `RealizedProfitLoss` as stored. Optional fees and financing costs are exposed separately on a trade and are not subtracted a second time.
+The screenshot was captured from the real React application and API using only the committed fictional seed dataset. The current frontend visualizes trade analytics; the reservation and recovery workflows are exercised through the API and automated tests.
 
-## React dashboard
+## Running Locally
 
-First start the API:
+### Prerequisites
+
+- .NET 10 SDK
+- Node.js 24 or another version supported by Vite 8
+- Git
+
+### Restore, migrate, and run the API
+
+From the repository root:
 
 ```powershell
-dotnet run --project src/DemoTradeLab.Api
+dotnet tool restore
+dotnet restore DemoTradeLab.sln
+dotnet ef database update `
+  --project src/DemoTradeLab.Infrastructure `
+  --startup-project src/DemoTradeLab.Api
+dotnet run --project src/DemoTradeLab.Api --launch-profile http
 ```
 
-Then start the frontend in a second terminal:
+The default HTTP address is `http://localhost:5122`. In Development, the OpenAPI document is available at `http://localhost:5122/openapi/v1.json`.
+
+Migrations are not applied automatically during API startup. Applying the committed migrations also adds the fictional sample trades and configured demo profiles/accounts to a new database without resetting existing balances.
+
+### Run the frontend
+
+In a second terminal:
 
 ```powershell
 cd web/demotrade-lab-web
-npm install
+npm ci
 npm run dev
 ```
 
-Open `http://localhost:5173`. During development, Vite proxies `/api` requests to the API's default HTTP address at `http://localhost:5122`.
+Open `http://localhost:5173`. Vite proxies relative `/api` requests to the default API address. A separately hosted API can be selected with a local `VITE_API_BASE_URL`; local `.env` files are ignored.
 
-Frontend verification commands:
+### Verify the repository
 
 ```powershell
+dotnet format DemoTradeLab.sln --verify-no-changes --no-restore
+dotnet build DemoTradeLab.sln --no-restore
+dotnet test DemoTradeLab.sln --no-build --no-restore
+
+cd web/demotrade-lab-web
 npm run lint
 npm run build
+npm audit --audit-level=high
 ```
 
-For a separately hosted API, set `VITE_API_BASE_URL` in a local frontend `.env` file. The example file is committed, while local `.env` files remain ignored.
+The repository also includes a GitHub Actions workflow that performs backend and frontend verification on pushes and pull requests.
 
-## Repository structure
+## API Overview
+
+| Area | Main routes | Purpose |
+| --- | --- | --- |
+| Health | `GET /api/health` | Typed application health response |
+| Trades | `/api/trades` | Create, read, replace, delete, filter, and sort fictional completed trades |
+| Analytics | `/api/analytics/*` | Dashboard totals, instrument summaries, and currency-separated profit/loss timelines |
+| Demo profiles | `GET /api/demo-profiles` | Persisted fictional profiles, accounts, and calculated balances |
+| Reservations | `/api/demo-accounts/{accountId}/reservations` | Idempotent reserve, release, and consume workflows |
+| Orders | `/api/demo-accounts/{accountId}/orders` | Order lifecycle, event history, compensation, and reconciliation |
+
+Example requests are available in [`DemoTradeLab.Api.http`](src/DemoTradeLab.Api/DemoTradeLab.Api.http).
+
+## Project Structure
 
 ```text
 DemoTradeLab/
@@ -247,17 +191,31 @@ DemoTradeLab/
 |-- web/
 |   `-- demotrade-lab-web/
 |-- docs/
+|-- .github/workflows/
 |-- AGENTS.md
 |-- README.md
 `-- DemoTradeLab.sln
 ```
 
-Learning and portfolio documentation:
+Additional documentation:
 
-- [Testing and debugging guide](docs/TESTING_GUIDE.md)
+- [API reference](docs/API_REFERENCE.md)
+- [Technical walkthrough](docs/TECHNICAL_WALKTHROUGH.md)
 - [Backend learning guide](docs/BACKEND_LEARNING_GUIDE.md)
+- [Testing and debugging guide](docs/TESTING_GUIDE.md)
 - [Architecture diagram](docs/ARCHITECTURE_DIAGRAM.md)
 - [Detailed architecture](docs/ARCHITECTURE.md)
 - [Architectural decisions](docs/DECISIONS.md)
-- [Interview demonstration](docs/INTERVIEW_DEMO.md)
-- [Roadmap](docs/ROADMAP.md)
+- [Completed roadmap](docs/ROADMAP.md)
+
+## Limitations / Educational Scope
+
+- The system is a fictional educational environment, not a brokerage or financial service.
+- It has no authentication, authorization, real-account connectivity, live market data, order execution, or trading recommendations.
+- SQLite and the in-memory account lock are intended for a single-machine, single-API-process demonstration.
+- The lock is not distributed, and the repository does not claim multi-instance concurrency safety.
+- Analytics load the bounded local trade dataset into memory; there is no pagination or server-database aggregation strategy for large datasets.
+- Reconciliation reports inconsistencies but does not automatically repair them.
+- The React dashboard covers trade analytics, not the reservation and order-recovery APIs.
+- The frontend has no automated test suite yet.
+- Production concerns such as identity, authorization, distributed coordination, deployment, monitoring, tracing, retention, and operational recovery policies are intentionally outside the current scope.

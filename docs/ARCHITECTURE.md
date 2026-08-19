@@ -175,7 +175,7 @@ ASP.NET Core serializes `decimal` values as JSON numbers, which browsers parse a
 
 ## Reliability-simulator architecture
 
-The `DemoProfile` and `DemoAccount` foundation is implemented in Milestone 4. Milestone 5A adds reservation transitions and persistence. Milestone 5B adds explicit transactions, durable idempotency/audit records, and a keyed local asynchronous lock. Orders and recovery scenarios remain later targets.
+The reliability module builds from persisted `DemoProfile` and `DemoAccount` records into reservation transitions, explicit transactions, durable idempotency and audit records, keyed local asynchronous locking, and order recovery workflows.
 
 ### Current atomic reservation flow
 
